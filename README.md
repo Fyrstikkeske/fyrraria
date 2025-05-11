@@ -1,4 +1,5 @@
 to run the program : Zig build run
+
 for small build: zig build small
 
 
