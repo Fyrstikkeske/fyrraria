@@ -1,0 +1,8 @@
+
+/.cache
+/.vscode
+/.zig-cache
+*.o
+compile_commands.json
+/zig-out
+fyrraria
