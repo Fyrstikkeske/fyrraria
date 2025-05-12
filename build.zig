@@ -4,12 +4,17 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    //packages
+    const zm = b.dependency("zm", .{});
+
     // Normal build module
     const exe_mod = b.createModule(.{
         .root_source_file = b.path("client/main.zig"),
         .target = target,
         .optimize = optimize,
     });
+
+    exe_mod.addImport("zm", zm.module("zm"));
 
     const exe = b.addExecutable(.{
         .name = "fyrraria",
@@ -39,6 +44,8 @@ pub fn build(b: *std.Build) void {
         .strip = true,
     });
 
+    exe_small_mod.addImport("zm", zm.module("zm"));
+
     const exe_small = b.addExecutable(.{
         .name = "fyrraria",
         .root_module = exe_small_mod,
@@ -61,7 +68,6 @@ pub fn build(b: *std.Build) void {
     });
     exe_small.root_module.addIncludePath(b.path("client/libraries/"));
 
-    exe_small.link_libc();
     exe_small.linkSystemLibrary("GL");
     exe_small.linkSystemLibrary("X11");
     exe_small.linkSystemLibrary("Xrandr");
