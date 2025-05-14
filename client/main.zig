@@ -174,16 +174,34 @@ pub fn main() !void {
                 glad.glViewport(0, 0, godStruct.render.win.*.r.w, godStruct.render.win.*.r.h);
             }
         }
-        var trans: zm.Mat4f = zm.Mat4f.identity();
 
-        trans = trans.multiply(zm.Mat4f.translation(0.5, 0.5, 0.0));
-        trans = trans.multiply(zm.Mat4f.rotation(zm.Vec3f{ 0.0, 0.0, 1.0 }, move));
+        //glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)width/(float)height, 0.1f, 100.0f);
 
-        const transformLoc: i32 = glad.glGetUniformLocation(godStruct.render.shaderProgram, "transform");
-        if (transformLoc == -1) {
-            std.debug.print("uhuh, transformLoc returned something bad: {} \n", .{transformLoc});
+        var model = zm.Mat4f.identity();
+        model = model.multiply(zm.Mat4f.rotation(zm.Vec3f{ 1.0, 0.0, 0.0 }, std.math.degreesToRadians(-55.0)));
+
+        var view = zm.Mat4f.identity();
+        view = view.multiply(zm.Mat4f.translation(0.0, 0.0, -3.0));
+
+        const projection = zm.Mat4f.perspective(std.math.degreesToRadians(45), @as(f32, @floatFromInt(godStruct.render.win.*.r.w)) / @as(f32, @floatFromInt(godStruct.render.win.*.r.h)), 0.1, 100.0);
+
+        const modelLoc: i32 = glad.glGetUniformLocation(godStruct.render.shaderProgram, "model");
+        const viewLoc: i32 = glad.glGetUniformLocation(godStruct.render.shaderProgram, "view");
+        const projectionLoc: i32 = glad.glGetUniformLocation(godStruct.render.shaderProgram, "projection");
+
+        if (modelLoc == -1) {
+            std.debug.print("cant find model in shader location \n", .{});
         }
-        glad.glUniformMatrix4fv(transformLoc, 1, glad.GL_FALSE, &trans.transpose().data[0]);
+        if (viewLoc == -1) {
+            std.debug.print("cant find view in shader location \n", .{});
+        }
+        if (projectionLoc == -1) {
+            std.debug.print("cant find projection in shader location \n", .{});
+        }
+
+        glad.glUniformMatrix4fv(modelLoc, 1, glad.GL_FALSE, &model.transpose().data[0]);
+        glad.glUniformMatrix4fv(viewLoc, 1, glad.GL_FALSE, &view.transpose().data[0]);
+        glad.glUniformMatrix4fv(projectionLoc, 1, glad.GL_FALSE, &projection.transpose().data[0]);
 
         var buffer: [32]u8 = undefined;
         const fps_str = std.fmt.bufPrintZ(&buffer, "Fyrraria: {d}", .{godStruct.render.fps}) catch unreachable;
