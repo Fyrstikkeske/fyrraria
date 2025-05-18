@@ -13,6 +13,7 @@ const stbi = @cImport({
 });
 
 const zm = @import("zm");
+const zigfp = @import("zigfp");
 
 const GodStruct = struct { render: Render };
 
@@ -28,11 +29,42 @@ const vertexshader = @embedFile("shaders/cube.vert");
 const fragmentshader = @embedFile("shaders/cube.frag");
 
 const vertices = [_]f32{
-    // positions           // texture coords
-    0.5, 0.5, 0.0, 1.0, 1.0, // top right
-    0.5, -0.5, 0.0, 1.0, 0.0, // bottom right
-    -0.5, -0.5, 0.0, 0.0, 0.0, // bottom left
-    -0.5, 0.5, 0.0, 0.0, 1.0, // top left
+    -0.5, -0.5, -0.5,  0.0, 0.0,
+     0.5, -0.5, -0.5,  1.0, 0.0,
+     0.5,  0.5, -0.5,  1.0, 1.0,
+     0.5,  0.5, -0.5,  1.0, 1.0,
+    -0.5,  0.5, -0.5,  0.0, 1.0,
+    -0.5, -0.5, -0.5,  0.0, 0.0,
+    -0.5, -0.5,  0.5,  0.0, 0.0,
+     0.5, -0.5,  0.5,  1.0, 0.0,
+     0.5,  0.5,  0.5,  1.0, 1.0,
+     0.5,  0.5,  0.5,  1.0, 1.0,
+    -0.5,  0.5,  0.5,  0.0, 1.0,
+    -0.5, -0.5,  0.5,  0.0, 0.0,
+    -0.5,  0.5,  0.5,  1.0, 0.0,
+    -0.5,  0.5, -0.5,  1.0, 1.0,
+    -0.5, -0.5, -0.5,  0.0, 1.0,
+    -0.5, -0.5, -0.5,  0.0, 1.0,
+    -0.5, -0.5,  0.5,  0.0, 0.0,
+    -0.5,  0.5,  0.5,  1.0, 0.0,
+     0.5,  0.5,  0.5,  1.0, 0.0,
+     0.5,  0.5, -0.5,  1.0, 1.0,
+     0.5, -0.5, -0.5,  0.0, 1.0,
+     0.5, -0.5, -0.5,  0.0, 1.0,
+     0.5, -0.5,  0.5,  0.0, 0.0,
+     0.5,  0.5,  0.5,  1.0, 0.0,
+    -0.5, -0.5, -0.5,  0.0, 1.0,
+     0.5, -0.5, -0.5,  1.0, 1.0,
+     0.5, -0.5,  0.5,  1.0, 0.0,
+     0.5, -0.5,  0.5,  1.0, 0.0,
+    -0.5, -0.5,  0.5,  0.0, 0.0,
+    -0.5, -0.5, -0.5,  0.0, 1.0,
+    -0.5,  0.5, -0.5,  0.0, 1.0,
+     0.5,  0.5, -0.5,  1.0, 1.0,
+     0.5,  0.5,  0.5,  1.0, 0.0,
+     0.5,  0.5,  0.5,  1.0, 0.0,
+    -0.5,  0.5,  0.5,  0.0, 0.0,
+    -0.5,  0.5, -0.5,  0.0, 1.0
 };
 
 const indices = [_]u32{ // note that we start from 0!
@@ -160,28 +192,38 @@ pub fn main() !void {
     //init much to keep main clean
     var godStruct: GodStruct = getandsetupdrgfwandopenglsprobgram();
 
+
+    var cameraPos: zm.Vec3f = .{ 0.0, 0.0, 3.0 };
+    const cameraFront: zm.Vec3f = .{ 0.0, 0.0, -1.0 };
+    const cameraUp: zm.Vec3f = .{ 0.0, 1.0, 0.0 };
+
     //Texture
     getandset_textureintoshaderfunction(godStruct.render.shaderProgram);
-
+    
+    glad.glEnable(glad.GL_DEPTH_TEST);
+    
     // Matrices
     var move: f32 = 0.0;
     _ = RGFW.RGFW_setKeyCallback(keyfunc);
     while (RGFW.RGFW_window_shouldClose(godStruct.render.win) == RGFW.RGFW_FALSE) {
+        glad.glClear(glad.GL_COLOR_BUFFER_BIT | glad.GL_DEPTH_BUFFER_BIT);
         const lastframe: i64 = std.time.microTimestamp();
         move += godStruct.render.delta;
         while (RGFW.RGFW_window_checkEvent(godStruct.render.win) != null) {
             if (godStruct.render.win.*.event.type == RGFW.RGFW_windowResized) {
                 glad.glViewport(0, 0, godStruct.render.win.*.r.w, godStruct.render.win.*.r.h);
             }
+            if (godStruct.render.win.*.event.type == RGFW.RGFW_quit) {break;}
         }
-
+        if (godStruct.render.win.*.event.key == 'w') {cameraPos += cameraFront * @Vector(3, f32){ 0.05, 0.05, 0.05 };}
+        if (godStruct.render.win.*.event.key == 's') {cameraPos -= cameraFront * @Vector(3, f32){ 0.05, 0.05, 0.05 };}
         //glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)width/(float)height, 0.1f, 100.0f);
 
         var model = zm.Mat4f.identity();
         model = model.multiply(zm.Mat4f.rotation(zm.Vec3f{ 1.0, 0.0, 0.0 }, std.math.degreesToRadians(-55.0)));
 
         var view = zm.Mat4f.identity();
-        view = view.multiply(zm.Mat4f.translation(0.0, 0.0, -3.0));
+        view = view.multiply(zm.Mat4f.lookAt(cameraPos, cameraPos + cameraFront, cameraUp));
 
         const projection = zm.Mat4f.perspective(std.math.degreesToRadians(45), @as(f32, @floatFromInt(godStruct.render.win.*.r.w)) / @as(f32, @floatFromInt(godStruct.render.win.*.r.h)), 0.1, 100.0);
 
@@ -198,7 +240,6 @@ pub fn main() !void {
         if (projectionLoc == -1) {
             std.debug.print("cant find projection in shader location \n", .{});
         }
-
         glad.glUniformMatrix4fv(modelLoc, 1, glad.GL_FALSE, &model.transpose().data[0]);
         glad.glUniformMatrix4fv(viewLoc, 1, glad.GL_FALSE, &view.transpose().data[0]);
         glad.glUniformMatrix4fv(projectionLoc, 1, glad.GL_FALSE, &projection.transpose().data[0]);
@@ -210,8 +251,12 @@ pub fn main() !void {
         glad.glClearColor(0.1, 0.1, 0.1, 1.0);
         glad.glClear(glad.GL_COLOR_BUFFER_BIT);
         glad.glBindVertexArray(godStruct.render.VAO);
-        glad.glDrawElements(glad.GL_TRIANGLES, 6, glad.GL_UNSIGNED_INT, null);
 
+        glad.glDrawArrays(glad.GL_TRIANGLES, 0, 36);
+        //glad.glDrawElements(glad.GL_TRIANGLES, 36, glad.GL_UNSIGNED_INT, null);
+
+
+        
         RGFW.RGFW_window_swapBuffers(godStruct.render.win);
         const thisframe: i64 = std.time.microTimestamp();
         godStruct.render.delta = @as(f32, @floatFromInt(thisframe - lastframe)) * 0.000001;

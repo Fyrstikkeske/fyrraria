@@ -40,6 +40,10 @@
             .url = "git+https://github.com/griush/zm#d3b2d90f9a1818f167abca40b7b708f9e9765638",
             .hash = "zm-0.3.0-cLX-WbfMAAAlqyfozvJsnhWlHO1MdlkVajyEDi6OISgO",
         },
+        .zigfp = .{
+            .url = "git+https://github.com/TUSF/zigfp#9dff05ac4e2bc97f273df5c2cb093df02da7b436",
+            .hash = "zigfp-0.0.1-ZT89FL4pAADL4bMSL-88iC3V-BJe4fiqedKzZmaZOMTW",
+        },
     },
     .paths = .{
         "build.zig",

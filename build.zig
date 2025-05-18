@@ -6,6 +6,7 @@ pub fn build(b: *std.Build) void {
 
     //packages
     const zm = b.dependency("zm", .{});
+    const zigfp = b.dependency("zigfp", .{});
 
     // Normal build module
     const exe_mod = b.createModule(.{
@@ -15,6 +16,7 @@ pub fn build(b: *std.Build) void {
     });
 
     exe_mod.addImport("zm", zm.module("zm"));
+    exe_mod.addImport("zigfp", zigfp.module("fp"));
 
     const exe = b.addExecutable(.{
         .name = "fyrraria",
@@ -45,6 +47,7 @@ pub fn build(b: *std.Build) void {
     });
 
     exe_small_mod.addImport("zm", zm.module("zm"));
+    exe_small_mod.addImport("zigfp", zigfp.module("fp"));
 
     const exe_small = b.addExecutable(.{
         .name = "fyrraria",
