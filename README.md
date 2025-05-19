@@ -1,19 +1,14 @@
-to run the program : Zig build run
+to run the program : make run
 
-for small build: zig build small
+if your ide doesnt work, try "make bear".
 
 
 # TODO
-- ZigFP for fixed points. https://github.com/ziglibs/zigfp
 - embed images, currently only does shaders
-- Zig based opengl library?
-- zig based image loader?
-
-Less likely
-zig windowing libraru instead of rgfw?
+- multiple blocks
 
 # technology using
-ZM: remember its right handed y up, But row-major. which means we have to use transpose() at every zm to opengl call.
+CGLM: pretty weird, its using a concept of modifying pointers values instead of returning values. Otherwise pretty good
 Glad: pretty decent for now
 STB: does its job very good
 RGFW: Decent
@@ -22,3 +17,4 @@ RGFW: Decent
 11/5/25: first commit
 13/5/25: rotation 
 15/5/25: added basic viewmatrix functionality from learnopengl
+20/5/25: Moved back to c, added movement with mouse
