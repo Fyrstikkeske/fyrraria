@@ -1,17 +1,25 @@
 #include "cglm/cam.h"
+#include "cglm/mat4.h"
 #include "cglm/types.h"
 #include "cglm/util.h"
 #include "cglm/vec3.h"
+
 #define GLAD_GL_IMPLEMENTATION
 #define RGFW_IMPLEMENTATION
 #define RGL_LOAD_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
+#define _USE_MATH_DEFINES
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #include <gl.h>
 #include <RGFW.h>
 #include <cglm/cglm.h>
 #include <stdio.h>
 #include <stb_image.h>
+#include <math.h>
 
 const char vertexShaderSource[] = { 
     #embed "shaders/cube.vert" 
@@ -175,6 +183,22 @@ int makeshaderprogram (){
     return shaderProgram;
 }
 
+void map_3d_to_torus(vec3 point, double major_radius, double minor_radius) {
+
+    double theta = point[0] * 2.0 * M_PI;
+    double phi = point[1] * 2.0 * M_PI;
+
+    double dynamic_minor_radius = minor_radius * exp(point[2]);
+
+    double cos_theta = cos(theta);
+    double sin_theta = sin(theta);
+    double cos_phi = cos(phi);
+    double sin_phi = sin(phi);
+
+    point[0] = (major_radius + dynamic_minor_radius * cos_phi) * cos_theta;
+    point[1] = (major_radius + dynamic_minor_radius * cos_phi) * sin_theta;
+    point[2] = dynamic_minor_radius * sin_phi;
+}
 
 int main() {
     char windowTitle[256] = "Fyrraria"; //For safety reason must do it like this.
@@ -229,10 +253,6 @@ int main() {
             }
         }
     
-        if (pitch > 89.0f)
-            pitch = 89.0f;
-        if (pitch < -89.0f)
-            pitch = -89.0f;
 
         vec3 front = {
             cos(glm_rad(yaw)) * cos(glm_rad(pitch)),
@@ -243,26 +263,34 @@ int main() {
 
         glm_vec3_copy(front, cameraFront);
 
-        float cameraSpeed = 0.05f;
+        vec3 cameraSpeed = {0.1f, 0.1f, 0.1f};
+        if (RGFW_isPressed(win, RGFW_shiftL)){
+            vec3 cameraSpeedmult = {2.f, 2.0f, 2.0f};
+            glm_vec3_mul(cameraSpeed, cameraSpeedmult, cameraSpeed);
+        };
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         if (RGFW_isPressed(win, RGFW_w)){
-            glm_vec3_add(cameraPos, cameraFront, cameraPos);
+            vec3 reducedCameraFront;
+            glm_vec3_mul(cameraFront, cameraSpeed, reducedCameraFront);
+            glm_vec3_add(cameraPos, reducedCameraFront, cameraPos);
         }
         if (RGFW_isPressed(win, RGFW_s)){
-            glm_vec3_sub(cameraPos, cameraFront, cameraPos);
+            vec3 reducedCameraFront;
+            glm_vec3_mul(cameraFront, cameraSpeed, reducedCameraFront);
+            glm_vec3_sub(cameraPos, reducedCameraFront, cameraPos);
         }
         if (RGFW_isPressed(win, RGFW_a)){
             vec3 normalised_value;
             glm_vec3_cross(cameraFront, cameraUp, normalised_value);
             glm_vec3_normalize(normalised_value);
-
+            glm_vec3_mul(normalised_value, cameraSpeed, normalised_value);
             glm_vec3_sub(cameraPos, normalised_value, cameraPos);
         }
         if (RGFW_isPressed(win, RGFW_d)){
             vec3 normalised_value;
             glm_vec3_cross(cameraFront, cameraUp, normalised_value);
             glm_vec3_normalize(normalised_value);
-
+            glm_vec3_mul(normalised_value, cameraSpeed, normalised_value);
             glm_vec3_add(cameraPos, normalised_value, cameraPos);
         }
 
@@ -275,9 +303,7 @@ int main() {
         const char* fps_str = buffer;
         RGFW_window_setName(win, fps_str);
 
-        mat4 model = GLM_MAT4_IDENTITY_INIT;
-        vec3 axis = {0.0f, 1.0f, 0.0f};
-        glm_rotate(model, glm_rad(frames), axis);
+        
 
         
         mat4 view;
@@ -286,14 +312,14 @@ int main() {
         glm_lookat(cameraPos, center, cameraUp, view);
         
         mat4 projection;
-        glm_perspective(glm_rad(45), win->r.w/win->r.h, 0.1, 100.0, projection);
+        glm_perspective(glm_rad(70), win->r.w/win->r.h, 0.1, 100000.0, projection);
 
-        int modelLocaction = glGetUniformLocation(shaderProgram, "model");
+        int blockpositionLocaction = glGetUniformLocation(shaderProgram, "blockposition");
         int viewLocation = glGetUniformLocation(shaderProgram, "view");
         int projectionLocation = glGetUniformLocation(shaderProgram, "projection");
 
-        if (modelLocaction == -1) {
-            printf("cant find model in shader location \n");
+        if (blockpositionLocaction == -1) {
+            printf("cant find blockpositionLocaction in shader location \n");
         }
         if (viewLocation == -1) {
             printf("cant find view in shader location \n");
@@ -302,17 +328,37 @@ int main() {
             printf("cant find projection in shader location \n");
         }
 
-        glUniformMatrix4fv(modelLocaction, 1, GL_FALSE, (const float *)model);
+        int gridXLocation = glGetUniformLocation(shaderProgram, "gridX");
+        int gridYLocation = glGetUniformLocation(shaderProgram, "gridY");
+
+        if (gridXLocation == -1) {
+            printf("cant find gridXLocation in shader location \n");
+        }
+        if (gridYLocation == -1) {
+            printf("cant find gridYLocation in shader location \n");
+        }
+
+        int x = 120;
+        int y = 40;
+
+        //height should the be height? dont know but it is for some reason
+        int z = 1;
+
+        glUniform1f(gridXLocation, x);
+        glUniform1f(gridYLocation, y);
+
         glUniformMatrix4fv(viewLocation, 1, GL_FALSE, (const float *)view);
         glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, (const float *)projection);
 
 
-
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        for (unsigned int iter = 0; iter < x*y*z; iter++){
+            vec3 blockposition = {(iter % x), ((iter / x) % y), ((iter / x) / y) % z};
 
-        glUseProgram(shaderProgram);
+            glUniform3fv(blockpositionLocaction, 1, (const float *)blockposition);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
 
-        glDrawArrays(GL_TRIANGLES, 0, 36);
 
 
         

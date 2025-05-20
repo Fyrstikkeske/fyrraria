@@ -45,3 +45,6 @@ safe: LDFLAGS = -lGL -lX11 -lXrandr -lm -fsanitize=undefined -fsanitize=address
 safe: clean $(EXE)
 	@echo -e " \033[0;33m ### SAFE BUILD COMPLETE \033[0m \n"
 	./$(EXE)
+
+
+shader: clean run
