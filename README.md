@@ -6,8 +6,8 @@ if your ide doesnt work, try "make bear".
 # TODO
 
 - embed images, currently only does shaders
-- multiple blocks
 - proper chunking
+- research todo. make it go downwards and not outwards. Maybe?. 
 
 # technology using
 
@@ -23,3 +23,4 @@ RGFW: Decent
 15/5/25: added basic viewmatrix functionality from learnopengl
 20/5/25: Moved back to c, added movement with mouse
 21/5-25: donut
+22/5-25: proper donut finally(i think), and finally cracked bindless textures

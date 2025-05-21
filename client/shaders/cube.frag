@@ -8,9 +8,9 @@ in vec2 TexCoord;
 
 
 
-uniform sampler2D grass;
+uniform sampler2D texturehandle;
 
 void main()
 {
-    FragColor = texture(grass, TexCoord);
+    FragColor = texture(texturehandle, TexCoord);
 }

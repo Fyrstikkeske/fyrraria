@@ -37,47 +37,47 @@ struct shaderstruct{
 };
 
 float vertices[] = {
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f,  0.0f, 0.0f,
+     1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
+     1.0f,  1.0f, 0.0f,  1.0f, 1.0f,
+     1.0f,  1.0f, 0.0f,  1.0f, 1.0f,
+    0.0f,  1.0f, 0.0f,  0.0f, 1.0f,
+    0.0f, 0.0f, 0.0f,  0.0f, 0.0f,
 
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    0.0f, 0.0f,  1.0f,  0.0f, 0.0f,
+     1.0f, 0.0f,  1.0f,  1.0f, 0.0f,
+     1.0f,  1.0f,  1.0f,  1.0f, 1.0f,
+     1.0f,  1.0f,  1.0f,  1.0f, 1.0f,
+    0.0f,  1.0f,  1.0f,  0.0f, 1.0f,
+    0.0f, 0.0f,  1.0f,  0.0f, 0.0f,
 
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    0.0f,  1.0f,  1.0f,  1.0f, 0.0f,
+    0.0f,  1.0f, 0.0f,  1.0f, 1.0f,
+    0.0f, 0.0f, 0.0f,  0.0f, 1.0f,
+    0.0f, 0.0f, 0.0f,  0.0f, 1.0f,
+    0.0f, 0.0f,  1.0f,  0.0f, 0.0f,
+    0.0f,  1.0f,  1.0f,  1.0f, 0.0f,
 
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
+     1.0f,  1.0f, 0.0f,  1.0f, 1.0f,
+     1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
+     1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
+     1.0f, 0.0f,  1.0f,  0.0f, 0.0f,
+     1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
 
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    0.0f, 0.0f, 0.0f,  0.0f, 1.0f,
+     1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
+     1.0f, 0.0f,  1.0f,  1.0f, 0.0f,
+     1.0f, 0.0f,  1.0f,  1.0f, 0.0f,
+    0.0f, 0.0f,  1.0f,  0.0f, 0.0f,
+    0.0f, 0.0f, 0.0f,  0.0f, 1.0f,
 
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    0.0f,  1.0f, 0.0f,  0.0f, 1.0f,
+     1.0f,  1.0f, 0.0f,  1.0f, 1.0f,
+     1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
+     1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
+    0.0f,  1.0f,  1.0f,  0.0f, 0.0f,
+    0.0f,  1.0f, 0.0f,  0.0f, 1.0f
 };
 
 
@@ -95,10 +95,11 @@ void checkShaderCompilation(GLuint shader, const char* type) {
     if (!success) {
         glad_glGetShaderInfoLog(shader, sizeof(infoLog), NULL, infoLog);
         fprintf(stderr, "[ERROR] %s SHADER COMPILATION FAILED:\n%s\n", type, infoLog);
+        exit(-1);
     }
 }
 
-void loadTextureIntoShaderBindless(int shaderProgram, const char* pathToFile, const char* textureNameInShader) {
+unsigned long loadTextureIntoShaderBindless(int shaderProgram, const char* pathToFile) {
     int width, height, nrChannels;
     unsigned char *data = stbi_load(pathToFile, &width, &height, &nrChannels, 0);
     if (data == NULL) {
@@ -109,13 +110,12 @@ void loadTextureIntoShaderBindless(int shaderProgram, const char* pathToFile, co
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    stbi_image_free(data);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     GLuint64 handle = glGetTextureHandleARB(texture);
     glMakeTextureHandleResidentARB(handle);
-    GLint locaction = glGetUniformLocation(shaderProgram, textureNameInShader);
-    if (locaction != -1) glUniformHandleui64ARB(locaction, handle);
-    stbi_image_free(data);
+    return handle;
 }
 
 int makeshaderprogram (){
@@ -183,23 +183,6 @@ int makeshaderprogram (){
     return shaderProgram;
 }
 
-void map_3d_to_torus(vec3 point, double major_radius, double minor_radius) {
-
-    double theta = point[0] * 2.0 * M_PI;
-    double phi = point[1] * 2.0 * M_PI;
-
-    double dynamic_minor_radius = minor_radius * exp(point[2]);
-
-    double cos_theta = cos(theta);
-    double sin_theta = sin(theta);
-    double cos_phi = cos(phi);
-    double sin_phi = sin(phi);
-
-    point[0] = (major_radius + dynamic_minor_radius * cos_phi) * cos_theta;
-    point[1] = (major_radius + dynamic_minor_radius * cos_phi) * sin_theta;
-    point[2] = dynamic_minor_radius * sin_phi;
-}
-
 int main() {
     char windowTitle[256] = "Fyrraria"; //For safety reason must do it like this.
     RGFW_window* win = RGFW_createWindow(windowTitle, RGFW_RECT(0, 0, 800, 600), RGFW_windowCenter);
@@ -215,9 +198,12 @@ int main() {
     int shaderProgram = makeshaderprogram();
     glEnable(GL_DEPTH_TEST);
 
-    loadTextureIntoShaderBindless(shaderProgram, "client/textures/grass.png", "grass");
-    
+    unsigned int grasshandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/grass.png");
+    unsigned int tnt_testhandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/tnt_test.png");
 
+    GLint texturehandlelocaction = glGetUniformLocation(shaderProgram, "texturehandle");
+    if (texturehandlelocaction != -1) printf("cant find the texture location in shader");
+    
 
     vec3 cameraPos = { 0.0, 0.0, 3.0 };
     vec3 cameraFront = { 0.0, 0.0, -1.0 };
@@ -253,6 +239,10 @@ int main() {
             }
         }
     
+        if (pitch > 89.0f)
+            pitch = 89.0f;
+        if (pitch < -89.0f)
+            pitch = -89.0f;
 
         vec3 front = {
             cos(glm_rad(yaw)) * cos(glm_rad(pitch)),
@@ -265,7 +255,7 @@ int main() {
 
         vec3 cameraSpeed = {0.1f, 0.1f, 0.1f};
         if (RGFW_isPressed(win, RGFW_shiftL)){
-            vec3 cameraSpeedmult = {2.f, 2.0f, 2.0f};
+            vec3 cameraSpeedmult = {20.f, 20.0f, 20.0f};
             glm_vec3_mul(cameraSpeed, cameraSpeedmult, cameraSpeed);
         };
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -314,12 +304,24 @@ int main() {
         mat4 projection;
         glm_perspective(glm_rad(70), win->r.w/win->r.h, 0.1, 100000.0, projection);
 
-        int blockpositionLocaction = glGetUniformLocation(shaderProgram, "blockposition");
+        mat4 model = GLM_MAT4_IDENTITY_INIT;
+        int modelLocaction = glGetUniformLocation(shaderProgram, "model");
+        if (modelLocaction == -1) {
+            printf("cant find model in shader location \n");
+        }
+
+        
+        vec3 axis = {1.0f, 1.0f, 1.0f};
+        glm_rotate(model, glm_rad(frames), axis);
+        
+        glUniformMatrix4fv(modelLocaction, 1, GL_FALSE, (const float *)model);
+
+        int gridCoordLocaction = glGetUniformLocation(shaderProgram, "gridCoord");
         int viewLocation = glGetUniformLocation(shaderProgram, "view");
         int projectionLocation = glGetUniformLocation(shaderProgram, "projection");
 
-        if (blockpositionLocaction == -1) {
-            printf("cant find blockpositionLocaction in shader location \n");
+        if (gridCoordLocaction == -1) {
+            printf("cant find gridCoordLocaction in shader location \n");
         }
         if (viewLocation == -1) {
             printf("cant find view in shader location \n");
@@ -330,6 +332,7 @@ int main() {
 
         int gridXLocation = glGetUniformLocation(shaderProgram, "gridX");
         int gridYLocation = glGetUniformLocation(shaderProgram, "gridY");
+        int gridZLocation = glGetUniformLocation(shaderProgram, "gridZ");
 
         if (gridXLocation == -1) {
             printf("cant find gridXLocation in shader location \n");
@@ -337,15 +340,19 @@ int main() {
         if (gridYLocation == -1) {
             printf("cant find gridYLocation in shader location \n");
         }
+        if (gridZLocation == -1) {
+            printf("cant find gridZLocation in shader location \n");
+        }
 
-        int x = 120;
-        int y = 40;
+        int x = 500;
+        int y = 30;
 
         //height should the be height? dont know but it is for some reason
-        int z = 1;
+        int z = 5;
 
         glUniform1f(gridXLocation, x);
         glUniform1f(gridYLocation, y);
+        glUniform1f(gridZLocation, z);
 
         glUniformMatrix4fv(viewLocation, 1, GL_FALSE, (const float *)view);
         glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, (const float *)projection);
@@ -353,9 +360,16 @@ int main() {
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         for (unsigned int iter = 0; iter < x*y*z; iter++){
-            vec3 blockposition = {(iter % x), ((iter / x) % y), ((iter / x) / y) % z};
+            vec3 blockposition = {(float)(iter % x), (float)((iter / x) % y), (float)((iter / (x * y)) % z)};
 
-            glUniform3fv(blockpositionLocaction, 1, (const float *)blockposition);
+            if (iter == 0){
+                glUniformHandleui64ARB(texturehandlelocaction, grasshandle);
+            }else {
+                glUniformHandleui64ARB(texturehandlelocaction, tnt_testhandle);
+            }
+            
+
+            glUniform3fv(gridCoordLocaction, 1, (const float *)blockposition);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
