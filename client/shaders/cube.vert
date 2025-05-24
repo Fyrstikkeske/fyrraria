@@ -21,21 +21,20 @@ void main()
 
     // Calculate angles
     float theta = 2.0 * 3.1415926535 * u;
-    float phi = 2.0 * 3.1415926535 * v;
+    float phi = 2.0 * 3.1415926535 * w;
 
     // Calculate radii with aspect ratio preservation
     float majorCircumference = gridX; // Total X-length around major circle
-    float minorCircumference = gridY; // Total Y-length around minor circle
-    float R = majorCircumference / (2.0 * 3.1415926535); // Major radius
-    float r = minorCircumference / (2.0 * 3.1415926535); // Minor radius
+    float minorCircumference = gridZ; // Total Y-length around minor circle
+    float majorRadius = majorCircumference / (2.0 * 3.1415926535); // Major radius
+    float minorRadius = minorCircumference / (2.0 * 3.1415926535);
 
-    // Incorporate Z-coordinate as radial expansion
-    float effective_r = r * (1.0 + w); // Scale minor radius with Z
+    float effective_r = minorRadius * exp(v );
 
     // Torus parametrization
     vec3 pos;
-    pos.x = (R + effective_r * cos(phi)) * cos(theta);
-    pos.y = (R + effective_r * cos(phi)) * sin(theta);
+    pos.x = (majorRadius + effective_r * cos(phi)) * cos(theta);
+    pos.y = (majorRadius + effective_r * cos(phi)) * sin(theta);
     pos.z = effective_r * sin(phi);
 
     gl_Position = projection * view * model * vec4(pos, 1.0);

@@ -24,3 +24,5 @@ RGFW: Decent
 20/5/25: Moved back to c, added movement with mouse
 21/5-25: donut
 22/5-25: proper donut finally(i think), and finally cracked bindless textures
+22/5-25: uh, improper chunking? this is how it goes, xyz BUT yeah, x is always the biggest one, the large ring, z is the small ring while y is width. But the way chunking is done right now, its first x then y then z. Which means biggest ring, height, smallest ring. At least i think so.
+24-5/25: the height distortions are finally less
