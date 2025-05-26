@@ -5,9 +5,12 @@ if your ide doesnt work, try "make bear".
 
 # TODO
 
-- embed images, currently only does shaders
-- proper chunking
-- research todo. make it go downwards and not outwards. Maybe?. 
+- embed images, currently only embeds shaders
+- proper chunking. inwork
+
+## research todo
+
+- make the torus go down instead of up?
 
 # technology using
 
@@ -26,3 +29,4 @@ RGFW: Decent
 22/5-25: proper donut finally(i think), and finally cracked bindless textures
 22/5-25: uh, improper chunking? this is how it goes, xyz BUT yeah, x is always the biggest one, the large ring, z is the small ring while y is width. But the way chunking is done right now, its first x then y then z. Which means biggest ring, height, smallest ring. At least i think so.
 24-5/25: the height distortions are finally less
+26-5/25: added VBO, results:... Oh no. nevermind Trick was to not have one shared vao but a new one for every chunk.

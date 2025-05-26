@@ -33,13 +33,22 @@ const char fragmentShaderSource[] = {
 
 const int chunksize = 16;
 
-const int Worldx = 40; // major ring
-const int Worldy = 1; // world height
-const int Worldz = 8; // minor ring
+const int Worldx = 100; // major ring
+const int Worldy = 2; // world height
+const int Worldz = 20; // minor ring
 
 struct shaderstruct{
     int shaderProgram;
     unsigned int VAO;
+};
+
+float blockfacevertice[] = {
+    0.0f,  1.0f, 0.0f,  0.0f, 1.0f,
+    1.0f,  1.0f, 0.0f,  1.0f, 1.0f,
+    1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
+    1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
+   0.0f,  1.0f,  1.0f,  0.0f, 0.0f,
+   0.0f,  1.0f, 0.0f,  0.0f, 1.0f,
 };
 
 float vertices[] = {
@@ -98,6 +107,11 @@ struct block{
     enum blocktype type;
 };
 
+typedef struct {
+    GLuint vbo;
+    GLsizei vertexCount;
+} RenderChunk;
+
 
 
 void keyfunc(RGFW_window* win, unsigned char key, unsigned char keyChar, unsigned char keyMod, unsigned char pressed) {
@@ -138,29 +152,6 @@ unsigned long loadTextureIntoShaderBindless(int shaderProgram, const char* pathT
 }
 
 int makeshaderprogram (){
-
-   unsigned int indices[] = {  // note that we start from 0!
-       0, 1, 3,   // first triangle
-       1, 2, 3    // second triangle
-   };  
-   unsigned int VAO;
-   glGenVertexArrays(1, &VAO);  
-   glBindVertexArray(VAO);
-
-   unsigned int VBO;
-   glGenBuffers(1, &VBO);  
-   glBindBuffer(GL_ARRAY_BUFFER, VBO);  
-   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-   
-
-    unsigned int EBO;
-    glGenBuffers(1, &EBO);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW); 
-    
-
-
     unsigned int vertexShader;
     vertexShader = glCreateShader(GL_VERTEX_SHADER);
 
@@ -193,12 +184,6 @@ int makeshaderprogram (){
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);  
 
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);  
-
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3* sizeof(float)));
-    glEnableVertexAttribArray(1);
     return shaderProgram;
 }
 
@@ -248,52 +233,107 @@ int main() {
 
             world[chunkiter][blockiter].type = air;
 
+            
             if (globaly == 1){
                 world[chunkiter][blockiter].type = grass;
             }
+            
 
             globalz -= 5;
             globalx -= 160;
             if (globaly == 2 && globalz == 3 && globalx == 3){
                 world[chunkiter][blockiter].type = woodlog;
             }
-            if (globaly == 3 && globalz == 3 && globalx == 3){
-                world[chunkiter][blockiter].type = woodlog;
-            }
-            if (globaly == 4 && globalz == 3 && globalx == 3){
-                world[chunkiter][blockiter].type = woodlog;
-            }
-            if (globaly == 5 && globalz == 3 && globalx == 3){
-                world[chunkiter][blockiter].type = woodlog;
-            }
-            if (globaly == 5 && globalz == 2 && globalx == 3){
-                world[chunkiter][blockiter].type = leaf;
-            }
-            if (globaly == 5 && globalz == 4 && globalx == 3){
-                world[chunkiter][blockiter].type = leaf;
-            }
-            if (globaly == 5 && globalz == 3 && globalx == 2){
-                world[chunkiter][blockiter].type = leaf;
-            }
-            if (globaly == 5 && globalz == 3 && globalx == 4){
-                world[chunkiter][blockiter].type = leaf;
-            }
-            if (globaly == 6 && globalz == 3 && globalx == 3){
-                world[chunkiter][blockiter].type = leaf;
-            }
 
         }
     }
 
+    //MAKE MESHESHEESA DSA
+    // it are over 
+    //TODO FIX THIS PIECE OF SHIT UP
+
+    int renderdistance = Worldx*Worldy*Worldz;
+
+    unsigned int VAOs[renderdistance], VBOs[renderdistance], VBOsSize[renderdistance];
+
+    glGenVertexArrays(renderdistance, VAOs);
+
+    glGenBuffers(renderdistance,VBOs);
+
+
+    
+    for (int iter = 0; iter < renderdistance; iter++){
+
+        int meshableBlocks = 0;
+        for (int blockiter = 0; blockiter < chunksize * chunksize * chunksize; blockiter++){
+            if (world[iter][blockiter].type == air){continue;}
+            meshableBlocks += 1;
+        }
+        
+        VBOsSize[iter] = (3 + 2) * 6 * 6 * meshableBlocks;
+        if (meshableBlocks == 0){
+            continue;
+        }
+        
+
+        float worldmeshes[(3 + 2) * 6 * 6 * meshableBlocks];
+
+        int offset = 0;
+        for (int blockiter = 0; blockiter < chunksize * chunksize * chunksize; blockiter++){
+            if (world[iter][blockiter].type == air) continue;
+
+            // Calculate chunk coordinates
+            int chunkx = iter % Worldx;
+            int chunky = (iter / Worldx) % Worldy;
+            int chunkz = iter / (Worldx * Worldy);
+    
+            // Calculate local block coordinates within the chunk
+            int localx = blockiter % chunksize;
+            int localy = (blockiter / chunksize) % chunksize;
+            int localz = blockiter / (chunksize * chunksize);
+    
+            // Calculate global coordinates
+            int globalx = chunkx * chunksize + localx;
+            int globaly = chunky * chunksize + localy;
+            int globalz = chunkz * chunksize + localz;
+
+            float bvertice[30] = {
+                globalx + 0.0f, globaly +  1.0f, globalz + 0.0f, 0.0f, 1.0f,
+                globalx + 1.0f, globaly +  1.0f, globalz + 0.0f, 1.0f, 1.0f,
+                globalx +1.0f, globaly +  1.0f, globalz +  1.0f, 1.0f, 0.0f,
+                globalx +1.0f, globaly +  1.0f, globalz +  1.0f, 1.0f, 0.0f,
+                globalx +0.0f, globaly +  1.0f, globalz +  1.0f, 0.0f, 0.0f,
+                globalx +0.0f, globaly +  1.0f, globalz + 0.0f, 0.0f, 1.0f,
+            };
+            for (int localiter = 0; localiter < 30; localiter++){
+                worldmeshes[localiter + offset] = bvertice[localiter];
+            }
+
+            offset += 30 * 6;
+        }
+
+        glBindVertexArray(VAOs[iter]);
+        glBindBuffer(GL_ARRAY_BUFFER, VBOs[iter]);
+        
+
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (3 + 2) * 6 * 6 * meshableBlocks, worldmeshes, GL_STATIC_DRAW);
+
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);  
+    
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3* sizeof(float)));
+        glEnableVertexAttribArray(1);
+    }
 
     
     int shaderProgram = makeshaderprogram();
     glEnable(GL_DEPTH_TEST);
 
     unsigned int grasshandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/grass.png");
-    unsigned int tnt_testhandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/tnt_test.png");
     unsigned int woodloghandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/log.png");
     unsigned int leafhandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/leaf.png");
+    unsigned int tnt_testhandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/tnt_test.png");
 
     GLint texturehandlelocaction = glGetUniformLocation(shaderProgram, "texturehandle");
     if (texturehandlelocaction != -1) printf("cant find the texture location in shader");
@@ -406,13 +446,9 @@ int main() {
         
         glUniformMatrix4fv(modelLocaction, 1, GL_FALSE, (const float *)model);
 
-        int gridCoordLocaction = glGetUniformLocation(shaderProgram, "gridCoord");
         int viewLocation = glGetUniformLocation(shaderProgram, "view");
         int projectionLocation = glGetUniformLocation(shaderProgram, "projection");
 
-        if (gridCoordLocaction == -1) {
-            printf("cant find gridCoordLocaction in shader location \n");
-        }
         if (viewLocation == -1) {
             printf("cant find view in shader location \n");
         }
@@ -448,39 +484,10 @@ int main() {
 
         for (int worlditer = 0; worlditer < Worldx*Worldy*Worldz; worlditer++){
 
-            int chunkx = worlditer % Worldx;
-            int chunky = (worlditer / Worldx) % Worldy;
-            int chunkz = (worlditer / (Worldx * Worldy)) % Worldz;
-
-            for (int chunkiter = 0; chunkiter< chunksize*chunksize*chunksize; chunkiter++){
-                int localx = chunkiter % chunksize;
-                int localy = (chunkiter / chunksize) % chunksize;
-                int localz = (chunkiter / (chunksize * chunksize)) % chunksize;
-
-                vec3 blockposition = {(float)(chunkx * chunksize + localx),(float)(chunky * chunksize + localy), (float)(chunkz * chunksize + localz)};
-
-                glUniform3fv(gridCoordLocaction, 1, (const float *)blockposition);
-
-                if (world[worlditer][chunkiter].type == air){
-                    continue;
-                }
-
-                if (world[worlditer][chunkiter].type == grass){
-                    glUniformHandleui64ARB(texturehandlelocaction, grasshandle);
-                }
-                if (world[worlditer][chunkiter].type == test){
-                    glUniformHandleui64ARB(texturehandlelocaction, tnt_testhandle);
-                }
-                if (world[worlditer][chunkiter].type == woodlog){
-                    glUniformHandleui64ARB(texturehandlelocaction, woodloghandle);
-                }
-                if (world[worlditer][chunkiter].type == leaf){
-                    glUniformHandleui64ARB(texturehandlelocaction, leafhandle);
-                }
-
-                glDrawArrays(GL_TRIANGLES, 0, 36);
-            }
-
+            if (VBOsSize[worlditer] == 0){continue;}
+            glBindVertexArray(VAOs[worlditer]);
+            glBindBuffer(GL_ARRAY_BUFFER, VBOs[worlditer]);
+            glDrawArrays(GL_TRIANGLES, 0, VBOsSize[worlditer]);
 
         }
         
@@ -492,17 +499,3 @@ int main() {
     RGFW_window_close(win);
     return 0;
 }
-
-/* Note for future
-if (RGFW_isPressed(win, RGFW_space)){
-    printf("fps: %d\n", fps);
-}
-*/
-
-
-/*
-not needed for now
-glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-glBindVertexArray(0);
-glBindVertexArray(shaderProgram.VAO);
-*/

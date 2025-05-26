@@ -9,15 +9,14 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-uniform vec3 gridCoord;
 uniform float gridX, gridY, gridZ;
 
 void main()
 {
     // Normalize coordinates to [0, 1]
-    float u = (gridCoord.x + aPos.x) / gridX; // θ parameter
-    float v = (gridCoord.y + aPos.y) / gridY; // φ parameter
-    float w = (gridCoord.z + aPos.z) / gridZ; // Toroidal thickness
+    float u = (aPos.x) / gridX; // θ parameter
+    float v = (aPos.y) / gridY; // φ parameter
+    float w = (aPos.z) / gridZ; // Toroidal thickness
 
     // Calculate angles
     float theta = 2.0 * 3.1415926535 * u;

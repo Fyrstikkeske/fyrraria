@@ -12,10 +12,10 @@ release: clean $(EXE)
 	@echo -e " \033[0;32m ### STARING RELEASE BUILD\033[0m \n"
 	./$(EXE)
 
-small: CFLAGS = -Os -s -Iclient/libraries
-small: LDFLAGS += -s
+small: CFLAGS = -Oz -s -flto -fdata-sections -ffunction-sections -fno-ident -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-exceptions -fno-rtti -Iclient/libraries
+small: LDFLAGS += -Wl,--gc-sections -flto
 small: clean $(EXE)
-	@strip $(EXE)
+	@strip --strip-all $(EXE)
 	@echo -e " \033[0;34m ### SMALL OPTIMIZED BUILD COMPLETE \033[0m \n"
 
 
