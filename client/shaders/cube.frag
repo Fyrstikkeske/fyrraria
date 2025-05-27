@@ -1,16 +1,12 @@
-#version 430 core
-
+#version 450 core
 #extension GL_ARB_bindless_texture : require
+
+flat in uvec2 textureHandle;
+in vec2 TexCoord;
 
 out vec4 FragColor;
 
-in vec2 TexCoord;
-
-
-
-uniform sampler2D texturehandle;
-
-void main()
-{
-    FragColor = texture(texturehandle, TexCoord);
+void main() {
+    sampler2D tex = sampler2D(textureHandle);
+    FragColor = texture(tex, TexCoord);
 }

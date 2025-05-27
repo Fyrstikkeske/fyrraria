@@ -34,8 +34,8 @@ const char fragmentShaderSource[] = {
 const int chunksize = 16;
 
 const int Worldx = 100; // major ring
-const int Worldy = 2; // world height
-const int Worldz = 20; // minor ring
+const int Worldy = 1; // world height
+const int Worldz = 60; // minor ring
 
 struct shaderstruct{
     int shaderProgram;
@@ -95,7 +95,7 @@ float vertices[] = {
     0.0f,  1.0f, 0.0f,  0.0f, 1.0f
 };
 
-enum blocktype{
+enum blocktype : char{
     grass,
     test,
     air,
@@ -229,20 +229,42 @@ int main() {
             int globalx = chunkx * chunksize + localx;
             int globaly = chunky * chunksize + localy;
             int globalz = chunkz * chunksize + localz;
-            
 
-            world[chunkiter][blockiter].type = air;
+            globalz -= 480;
+            globalx -= 1200;
 
-            
             if (globaly == 1){
                 world[chunkiter][blockiter].type = grass;
             }
-            
-
-            globalz -= 5;
-            globalx -= 160;
             if (globaly == 2 && globalz == 3 && globalx == 3){
                 world[chunkiter][blockiter].type = woodlog;
+            }
+            if (globaly == 3 && globalz == 3 && globalx == 3){
+                world[chunkiter][blockiter].type = woodlog;
+            }
+            if (globaly == 4 && globalz == 3 && globalx == 3){
+                world[chunkiter][blockiter].type = woodlog;
+            }
+            if (globaly == 5 && globalz == 3 && globalx == 3){
+                world[chunkiter][blockiter].type = woodlog;
+            }
+            if (globaly == 6 && globalz == 3 && globalx == 3){
+                world[chunkiter][blockiter].type = leaf;
+            }
+            if (globaly == 6 && globalz == 4 && globalx == 3){
+                world[chunkiter][blockiter].type = leaf;
+            }
+            if (globaly == 6 && globalz == 2 && globalx == 3){
+                world[chunkiter][blockiter].type = leaf;
+            }
+            if (globaly == 6 && globalz == 3 && globalx == 2){
+                world[chunkiter][blockiter].type = leaf;
+            }
+            if (globaly == 6 && globalz == 3 && globalx == 4){
+                world[chunkiter][blockiter].type = leaf;
+            }
+            if (globaly == 7 && globalz == 3 && globalx == 3){
+                world[chunkiter][blockiter].type = leaf;
             }
 
         }
@@ -262,6 +284,18 @@ int main() {
 
 
     
+
+    
+    int shaderProgram = makeshaderprogram();
+    glEnable(GL_DEPTH_TEST);
+
+
+
+    uint64_t grasshandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/grass.png");
+    uint64_t woodloghandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/log.png");
+    uint64_t leafhandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/leaf.png");
+    uint64_t tnt_testhandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/tnt_test.png");
+
     for (int iter = 0; iter < renderdistance; iter++){
 
         int meshableBlocks = 0;
@@ -270,17 +304,25 @@ int main() {
             meshableBlocks += 1;
         }
         
-        VBOsSize[iter] = (3 + 2) * 6 * 6 * meshableBlocks;
+        VBOsSize[iter] = (3 + 2 + 1 + 1) * 6 * 6 * meshableBlocks;
         if (meshableBlocks == 0){
             continue;
         }
         
 
-        float worldmeshes[(3 + 2) * 6 * 6 * meshableBlocks];
+        float worldmeshes[(3 + 2 + 1 + 1) * 6 * 6 * meshableBlocks];
 
         int offset = 0;
         for (int blockiter = 0; blockiter < chunksize * chunksize * chunksize; blockiter++){
-            if (world[iter][blockiter].type == air) continue;
+            enum blocktype block = world[iter][blockiter].type;
+            if (block == air) continue;
+
+            uint64_t textHandleToUse;
+
+            if (block == grass){textHandleToUse = grasshandle;}
+            if (block == woodlog){textHandleToUse = woodloghandle;}
+            if (block == leaf){textHandleToUse = leafhandle;}
+            if (block == test){textHandleToUse = tnt_testhandle;}
 
             // Calculate chunk coordinates
             int chunkx = iter % Worldx;
@@ -297,46 +339,105 @@ int main() {
             int globaly = chunky * chunksize + localy;
             int globalz = chunkz * chunksize + localz;
 
-            float bvertice[30] = {
-                globalx + 0.0f, globaly +  1.0f, globalz + 0.0f, 0.0f, 1.0f,
-                globalx + 1.0f, globaly +  1.0f, globalz + 0.0f, 1.0f, 1.0f,
-                globalx +1.0f, globaly +  1.0f, globalz +  1.0f, 1.0f, 0.0f,
-                globalx +1.0f, globaly +  1.0f, globalz +  1.0f, 1.0f, 0.0f,
-                globalx +0.0f, globaly +  1.0f, globalz +  1.0f, 0.0f, 0.0f,
-                globalx +0.0f, globaly +  1.0f, globalz + 0.0f, 0.0f, 1.0f,
+            uint32_t handleLo = (uint32_t)(textHandleToUse & 0xFFFFFFFF);
+            uint32_t handleHi = (uint32_t)(textHandleToUse >> 32);
+
+            float floatLo;
+            float floatHi;
+            memcpy(&floatLo, &handleLo, sizeof(uint32_t));
+            memcpy(&floatHi, &handleHi, sizeof(uint32_t));
+
+            float ypvertice[42] = {
+                globalx + 0.0f, globaly +  1.0f, globalz + 0.0f, 0.0f, 1.0f, floatLo, floatHi,
+                globalx + 1.0f, globaly +  1.0f, globalz + 0.0f, 1.0f, 1.0f,floatLo,floatHi,
+                globalx +1.0f, globaly +  1.0f, globalz +  1.0f, 1.0f, 0.0f,floatLo,floatHi,
+                globalx +1.0f, globaly +  1.0f, globalz +  1.0f, 1.0f, 0.0f,floatLo,floatHi,
+                globalx +0.0f, globaly +  1.0f, globalz +  1.0f, 0.0f, 0.0f,floatLo,floatHi,
+                globalx +0.0f, globaly +  1.0f, globalz + 0.0f, 0.0f, 1.0f,floatLo,floatHi,
             };
-            for (int localiter = 0; localiter < 30; localiter++){
-                worldmeshes[localiter + offset] = bvertice[localiter];
+            for (int localiter = 0; localiter < 42; localiter++){
+                worldmeshes[localiter + offset] = ypvertice[localiter];
+            }
+            float ynvertice[42] = {
+               globalx + 0.0f,globaly + 0.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
+               globalx + 1.0f,globaly + 0.0f, globalz +0.0f,  1.0f, 1.0f,floatLo,floatHi,
+               globalx + 1.0f,globaly + 0.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
+               globalx + 1.0f,globaly + 0.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
+               globalx +0.0f, globaly +0.0f,  globalz +1.0f,  0.0f, 0.0f,floatLo,floatHi,
+               globalx +0.0f, globaly +0.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
+            };
+            for (int localiter = 0; localiter < 42; localiter++){
+                worldmeshes[localiter + offset + 42 ] = ynvertice[localiter];
+            }
+            float xpvertice[42] = {
+                globalx +1.0f,globaly +  1.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
+                globalx +1.0f,globaly +  1.0f, globalz +0.0f,  1.0f, 1.0f,floatLo,floatHi,
+                globalx +1.0f,globaly + 0.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
+                globalx +1.0f,globaly + 0.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
+                globalx +1.0f,globaly + 0.0f,  globalz +1.0f,  0.0f, 0.0f,floatLo,floatHi,
+                globalx +1.0f,globaly +  1.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
+            };
+            for (int localiter = 0; localiter < 42; localiter++){
+                worldmeshes[localiter + offset + 42 * 2] = xpvertice[localiter];
+            }
+            
+            float xnvertice[42] = {
+                globalx +0.0f,globaly +  1.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
+                globalx +0.0f,globaly +  1.0f, globalz +0.0f,  1.0f, 1.0f,floatLo,floatHi,
+                globalx +0.0f,globaly + 0.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
+                globalx +0.0f,globaly + 0.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
+                globalx +0.0f,globaly + 0.0f,  globalz +1.0f,  0.0f, 0.0f,floatLo,floatHi,
+                globalx +0.0f,globaly +  1.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
+            };
+            for (int localiter = 0; localiter < 42; localiter++){
+                worldmeshes[localiter + offset + 42 * 3] = xnvertice[localiter];
             }
 
-            offset += 30 * 6;
+            
+            float zpvertice[42] = {
+              globalx +  0.0f, globaly +0.0f, globalz + 1.0f,  0.0f, 0.0f,floatLo,floatHi,
+              globalx +  1.0f, globaly +0.0f, globalz + 1.0f,  1.0f, 0.0f,floatLo,floatHi,
+              globalx +  1.0f, globaly + 1.0f,globalz +  1.0f,  1.0f, 1.0f,floatLo,floatHi,
+              globalx +  1.0f, globaly + 1.0f,globalz +  1.0f,  1.0f, 1.0f,floatLo,floatHi,
+              globalx + 0.0f,  globaly +1.0f, globalz + 1.0f,  0.0f, 1.0f,floatLo,floatHi,
+              globalx + 0.0f, globaly +0.0f,  globalz +1.0f,  0.0f, 0.0f,floatLo,floatHi,
+            };
+            for (int localiter = 0; localiter < 42; localiter++){
+                worldmeshes[localiter + offset + 42 * 4] = zpvertice[localiter];
+            }
+            float znvertice[42] = {
+               globalx + 0.0f,globaly + 0.0f, globalz +0.0f,  0.0f, 0.0f,floatLo,floatHi,
+               globalx + 1.0f,globaly + 0.0f, globalz +0.0f,  1.0f, 0.0f,floatLo,floatHi,
+               globalx + 1.0f,globaly +  1.0f,globalz + 0.0f,  1.0f, 1.0f,floatLo,floatHi,
+               globalx + 1.0f,globaly +  1.0f,globalz + 0.0f,  1.0f, 1.0f,floatLo,floatHi,
+               globalx +0.0f, globaly + 1.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
+               globalx + 0.0f, globaly +0.0f, globalz +0.0f,  0.0f, 0.0f,floatLo,floatHi,
+            };
+            for (int localiter = 0; localiter < 42; localiter++){
+                worldmeshes[localiter + offset + (42 * 5)] = znvertice[localiter];
+            }
+        
+            offset += 42 * 6;
         }
 
         glBindVertexArray(VAOs[iter]);
         glBindBuffer(GL_ARRAY_BUFFER, VBOs[iter]);
         
 
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (3 + 2) * 6 * 6 * meshableBlocks, worldmeshes, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (3 + 2 + 1 + 1) * 6 * 6 * meshableBlocks, worldmeshes, GL_STATIC_DRAW);
 
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);  
     
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3* sizeof(float)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(3* sizeof(float)));
         glEnableVertexAttribArray(1);
+
+        glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 7 * sizeof(float), (void*)(5 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT, 7 * sizeof(float), (void*)(6 * sizeof(float)));
+        glEnableVertexAttribArray(3);
+
     }
-
-    
-    int shaderProgram = makeshaderprogram();
-    glEnable(GL_DEPTH_TEST);
-
-    unsigned int grasshandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/grass.png");
-    unsigned int woodloghandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/log.png");
-    unsigned int leafhandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/leaf.png");
-    unsigned int tnt_testhandle = loadTextureIntoShaderBindless(shaderProgram, "client/textures/tnt_test.png");
-
-    GLint texturehandlelocaction = glGetUniformLocation(shaderProgram, "texturehandle");
-    if (texturehandlelocaction != -1) printf("cant find the texture location in shader");
     
 
     vec3 cameraPos = { 0.0, 0.0, 3.0 };
