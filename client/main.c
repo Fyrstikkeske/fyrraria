@@ -395,23 +395,23 @@ int main() {
 
             
             float zpvertice[42] = {
-              globalx +  0.0f, globaly +0.0f, globalz + 1.0f,  0.0f, 0.0f,floatLo,floatHi,
-              globalx +  1.0f, globaly +0.0f, globalz + 1.0f,  1.0f, 0.0f,floatLo,floatHi,
-              globalx +  1.0f, globaly + 1.0f,globalz +  1.0f,  1.0f, 1.0f,floatLo,floatHi,
-              globalx +  1.0f, globaly + 1.0f,globalz +  1.0f,  1.0f, 1.0f,floatLo,floatHi,
-              globalx + 0.0f,  globaly +1.0f, globalz + 1.0f,  0.0f, 1.0f,floatLo,floatHi,
-              globalx + 0.0f, globaly +0.0f,  globalz +1.0f,  0.0f, 0.0f,floatLo,floatHi,
+              globalx +  0.0f, globaly +0.0f, globalz + 1.0f,  1.0f, 0.0f,floatLo,floatHi,
+              globalx +  1.0f, globaly +0.0f, globalz + 1.0f,  1.0f, 1.0f,floatLo,floatHi,
+              globalx +  1.0f, globaly + 1.0f,globalz + 1.0f,  0.0f, 1.0f,floatLo,floatHi,
+              globalx +  1.0f, globaly + 1.0f,globalz + 1.0f,  0.0f, 1.0f,floatLo,floatHi,
+              globalx + 0.0f,  globaly +1.0f, globalz + 1.0f,  0.0f, 0.0f,floatLo,floatHi,
+              globalx + 0.0f, globaly +0.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
             };
             for (int localiter = 0; localiter < 42; localiter++){
                 worldmeshes[localiter + offset + 42 * 4] = zpvertice[localiter];
             }
             float znvertice[42] = {
-               globalx + 0.0f,globaly + 0.0f, globalz +0.0f,  0.0f, 0.0f,floatLo,floatHi,
-               globalx + 1.0f,globaly + 0.0f, globalz +0.0f,  1.0f, 0.0f,floatLo,floatHi,
-               globalx + 1.0f,globaly +  1.0f,globalz + 0.0f,  1.0f, 1.0f,floatLo,floatHi,
-               globalx + 1.0f,globaly +  1.0f,globalz + 0.0f,  1.0f, 1.0f,floatLo,floatHi,
-               globalx +0.0f, globaly + 1.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
-               globalx + 0.0f, globaly +0.0f, globalz +0.0f,  0.0f, 0.0f,floatLo,floatHi,
+               globalx + 0.0f,globaly + 0.0f, globalz +0.0f,  1.0f, 0.0f,floatLo,floatHi,
+               globalx + 1.0f,globaly + 0.0f, globalz +0.0f,  1.0f, 1.0f,floatLo,floatHi,
+               globalx + 1.0f,globaly +  1.0f,globalz + 0.0f,  0.0f, 1.0f,floatLo,floatHi,
+               globalx + 1.0f,globaly +  1.0f,globalz + 0.0f,  0.0f, 1.0f,floatLo,floatHi,
+               globalx +0.0f, globaly + 1.0f, globalz +0.0f,  0.0f, 0.0f,floatLo,floatHi,
+               globalx + 0.0f, globaly +0.0f, globalz +0.0f,  1.0f, 0.0f,floatLo,floatHi,
             };
             for (int localiter = 0; localiter < 42; localiter++){
                 worldmeshes[localiter + offset + (42 * 5)] = znvertice[localiter];
