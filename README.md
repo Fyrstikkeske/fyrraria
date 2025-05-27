@@ -43,4 +43,4 @@ RGFW: Decent
 
 26-5/25: added VBO, results:... Oh no. nevermind Trick was to not have one shared vao but a new one for every chunk.
 
-27-5/25: completed the VBO and added textures to it. Theres a couple of magic numbers in the vertex shader i have to figure out.
+27-5/25: completed the VBO and added textures to it. Theres a couple of magic numbers in the vertex shader i have to figure out. last minute addition: Backface culling 
