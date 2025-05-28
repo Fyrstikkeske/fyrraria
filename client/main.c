@@ -33,66 +33,19 @@ const char fragmentShaderSource[] = {
 
 const int chunksize = 16;
 
-const int Worldx = 100; // major ring
+const int Worldx = 32; // major ring
 const int Worldy = 1; // world height
-const int Worldz = 60; // minor ring
+const int Worldz = 4; // minor ring
+
+const int vertexSize = 3+2+1+1;
+
+const int faceSize = vertexSize * 6;
+
+const int blockSize = faceSize * 6;
 
 struct shaderstruct{
     int shaderProgram;
     unsigned int VAO;
-};
-
-float blockfacevertice[] = {
-    0.0f,  1.0f, 0.0f,  0.0f, 1.0f,
-    1.0f,  1.0f, 0.0f,  1.0f, 1.0f,
-    1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
-    1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
-   0.0f,  1.0f,  1.0f,  0.0f, 0.0f,
-   0.0f,  1.0f, 0.0f,  0.0f, 1.0f,
-};
-
-float vertices[] = {
-    0.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-     1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
-     1.0f,  1.0f, 0.0f,  1.0f, 1.0f,
-     1.0f,  1.0f, 0.0f,  1.0f, 1.0f,
-    0.0f,  1.0f, 0.0f,  0.0f, 1.0f,
-    0.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-
-    0.0f, 0.0f,  1.0f,  0.0f, 0.0f,
-     1.0f, 0.0f,  1.0f,  1.0f, 0.0f,
-     1.0f,  1.0f,  1.0f,  1.0f, 1.0f,
-     1.0f,  1.0f,  1.0f,  1.0f, 1.0f,
-    0.0f,  1.0f,  1.0f,  0.0f, 1.0f,
-    0.0f, 0.0f,  1.0f,  0.0f, 0.0f,
-
-    0.0f,  1.0f,  1.0f,  1.0f, 0.0f,
-    0.0f,  1.0f, 0.0f,  1.0f, 1.0f,
-    0.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-    0.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-    0.0f, 0.0f,  1.0f,  0.0f, 0.0f,
-    0.0f,  1.0f,  1.0f,  1.0f, 0.0f,
-
-     1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
-     1.0f,  1.0f, 0.0f,  1.0f, 1.0f,
-     1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-     1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-     1.0f, 0.0f,  1.0f,  0.0f, 0.0f,
-     1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
-
-    0.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-     1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
-     1.0f, 0.0f,  1.0f,  1.0f, 0.0f,
-     1.0f, 0.0f,  1.0f,  1.0f, 0.0f,
-    0.0f, 0.0f,  1.0f,  0.0f, 0.0f,
-    0.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-
-    0.0f,  1.0f, 0.0f,  0.0f, 1.0f,
-     1.0f,  1.0f, 0.0f,  1.0f, 1.0f,
-     1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
-     1.0f,  1.0f,  1.0f,  1.0f, 0.0f,
-    0.0f,  1.0f,  1.0f,  0.0f, 0.0f,
-    0.0f,  1.0f, 0.0f,  0.0f, 1.0f
 };
 
 enum blocktype : char{
@@ -230,8 +183,11 @@ int main() {
             int globaly = chunky * chunksize + localy;
             int globalz = chunkz * chunksize + localz;
 
-            globalz -= 480;
+            /*
+                        globalz -= 480;
             globalx -= 1200;
+            */
+
 
             if (globaly == 1){
                 world[chunkiter][blockiter].type = grass;
@@ -304,13 +260,13 @@ int main() {
             meshableBlocks += 1;
         }
         
-        VBOsSize[iter] = (3 + 2 + 1 + 1) * 6 * 6 * meshableBlocks;
+        VBOsSize[iter] = blockSize * meshableBlocks;
         if (meshableBlocks == 0){
             continue;
         }
         
 
-        float worldmeshes[(3 + 2 + 1 + 1) * 6 * 6 * meshableBlocks];
+        float worldmeshes[blockSize * meshableBlocks];
 
         int offset = 0;
         for (int blockiter = 0; blockiter < chunksize * chunksize * chunksize; blockiter++){
@@ -347,7 +303,7 @@ int main() {
             memcpy(&floatLo, &handleLo, sizeof(uint32_t));
             memcpy(&floatHi, &handleHi, sizeof(uint32_t));
 
-            float ypvertice[42] = {
+            float ypvertice[] = {
                 globalx + 0.0f, globaly +  1.0f, globalz + 0.0f, 0.0f, 1.0f, floatLo, floatHi,
                 globalx + 1.0f, globaly +  1.0f, globalz + 0.0f, 1.0f, 1.0f,floatLo,floatHi,
                 globalx +1.0f, globaly +  1.0f, globalz +  1.0f, 1.0f, 0.0f,floatLo,floatHi,
@@ -355,10 +311,10 @@ int main() {
                 globalx +0.0f, globaly +  1.0f, globalz +  1.0f, 0.0f, 0.0f,floatLo,floatHi,
                 globalx +0.0f, globaly +  1.0f, globalz + 0.0f, 0.0f, 1.0f,floatLo,floatHi,
             };
-            for (int localiter = 0; localiter < 42; localiter++){
+            for (int localiter = 0; localiter < faceSize; localiter++){
                 worldmeshes[localiter + offset] = ypvertice[localiter];
             }
-            float ynvertice[42] = {
+            float ynvertice[] = {
                globalx + 0.0f,globaly + 0.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
                globalx + 1.0f,globaly + 0.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
                globalx + 1.0f,globaly + 0.0f, globalz +0.0f,  1.0f, 1.0f,floatLo,floatHi,
@@ -366,10 +322,10 @@ int main() {
                globalx +0.0f, globaly +0.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
                globalx +0.0f, globaly +0.0f,  globalz +1.0f,  0.0f, 0.0f,floatLo,floatHi,
             };
-            for (int localiter = 0; localiter < 42; localiter++){
-                worldmeshes[localiter + offset + 42 ] = ynvertice[localiter];
+            for (int localiter = 0; localiter < faceSize; localiter++){
+                worldmeshes[localiter + offset + faceSize ] = ynvertice[localiter];
             }
-            float xpvertice[42] = {
+            float xpvertice[] = {
                 globalx +1.0f,globaly +  1.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
                 globalx +1.0f,globaly +  1.0f, globalz +0.0f,  1.0f, 1.0f,floatLo,floatHi,
                 globalx +1.0f,globaly + 0.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
@@ -377,11 +333,11 @@ int main() {
                 globalx +1.0f,globaly + 0.0f,  globalz +1.0f,  0.0f, 0.0f,floatLo,floatHi,
                 globalx +1.0f,globaly +  1.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
             };
-            for (int localiter = 0; localiter < 42; localiter++){
-                worldmeshes[localiter + offset + 42 * 2] = xpvertice[localiter];
+            for (int localiter = 0; localiter < faceSize; localiter++){
+                worldmeshes[localiter + offset + faceSize * 2] = xpvertice[localiter];
             }
             
-            float xnvertice[42] = {
+            float xnvertice[] = {
                 globalx +0.0f,globaly +  1.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
                 globalx +0.0f,globaly + 0.0f, globalz +0.0f,  0.0f, 1.0f,floatLo,floatHi,
                 globalx +0.0f,globaly +  1.0f, globalz +0.0f,  1.0f, 1.0f,floatLo,floatHi,
@@ -390,12 +346,12 @@ int main() {
                 globalx +0.0f,globaly + 0.0f,  globalz +1.0f,  0.0f, 0.0f,floatLo,floatHi,
 
             };
-            for (int localiter = 0; localiter < 42; localiter++){
-                worldmeshes[localiter + offset + 42 * 3] = xnvertice[localiter];
+            for (int localiter = 0; localiter < faceSize; localiter++){
+                worldmeshes[localiter + offset + faceSize * 3] = xnvertice[localiter];
             }
 
             
-            float zpvertice[42] = {
+            float zpvertice[] = {
               globalx +  0.0f, globaly +0.0f, globalz + 1.0f,  1.0f, 0.0f,floatLo,floatHi,
               globalx +  1.0f, globaly + 1.0f,globalz + 1.0f,  0.0f, 1.0f,floatLo,floatHi,
               globalx +  1.0f, globaly +0.0f, globalz + 1.0f,  1.0f, 1.0f,floatLo,floatHi,
@@ -403,10 +359,10 @@ int main() {
               globalx + 0.0f, globaly +0.0f,  globalz +1.0f,  1.0f, 0.0f,floatLo,floatHi,
               globalx + 0.0f,  globaly +1.0f, globalz + 1.0f,  0.0f, 0.0f,floatLo,floatHi,
             };
-            for (int localiter = 0; localiter < 42; localiter++){
-                worldmeshes[localiter + offset + 42 * 4] = zpvertice[localiter];
+            for (int localiter = 0; localiter < faceSize; localiter++){
+                worldmeshes[localiter + offset + faceSize * 4] = zpvertice[localiter];
             }
-            float znvertice[42] = {
+            float znvertice[] = {
                globalx + 0.0f,globaly + 0.0f, globalz +0.0f,  1.0f, 0.0f,floatLo,floatHi,
                globalx + 1.0f,globaly + 0.0f, globalz +0.0f,  1.0f, 1.0f,floatLo,floatHi,
                globalx + 1.0f,globaly +  1.0f,globalz + 0.0f,  0.0f, 1.0f,floatLo,floatHi,
@@ -414,18 +370,18 @@ int main() {
                globalx +0.0f, globaly + 1.0f, globalz +0.0f,  0.0f, 0.0f,floatLo,floatHi,
                globalx + 0.0f, globaly +0.0f, globalz +0.0f,  1.0f, 0.0f,floatLo,floatHi,
             };
-            for (int localiter = 0; localiter < 42; localiter++){
-                worldmeshes[localiter + offset + (42 * 5)] = znvertice[localiter];
+            for (int localiter = 0; localiter < faceSize; localiter++){
+                worldmeshes[localiter + offset + (faceSize * 5)] = znvertice[localiter];
             }
         
-            offset += 42 * 6;
+            offset += blockSize;
         }
 
         glBindVertexArray(VAOs[iter]);
         glBindBuffer(GL_ARRAY_BUFFER, VBOs[iter]);
         
 
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (3 + 2 + 1 + 1) * 6 * 6 * meshableBlocks, worldmeshes, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * blockSize * meshableBlocks, worldmeshes, GL_STATIC_DRAW);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);  
@@ -561,15 +517,15 @@ int main() {
         }
 
         int gridXLocation = glGetUniformLocation(shaderProgram, "gridX");
-        int gridYLocation = glGetUniformLocation(shaderProgram, "gridY");
+        //int gridYLocation = glGetUniformLocation(shaderProgram, "gridY");
         int gridZLocation = glGetUniformLocation(shaderProgram, "gridZ");
 
         if (gridXLocation == -1) {
             printf("cant find gridXLocation in shader location \n");
         }
-        if (gridYLocation == -1) {
-            printf("cant find gridYLocation in shader location \n");
-        }
+        //if (gridYLocation == -1) {
+        //    printf("cant find gridYLocation in shader location \n");
+        //}
         if (gridZLocation == -1) {
             printf("cant find gridZLocation in shader location \n");
         }
@@ -577,7 +533,7 @@ int main() {
 
 
         glUniform1f(gridXLocation, Worldx * chunksize);
-        glUniform1f(gridYLocation, Worldy * chunksize);
+        //glUniform1f(gridYLocation, Worldy * chunksize);
         glUniform1f(gridZLocation, Worldz * chunksize);
 
         glUniformMatrix4fv(viewLocation, 1, GL_FALSE, (const float *)view);

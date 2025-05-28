@@ -12,28 +12,25 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-uniform float gridX, gridY, gridZ;
+uniform float gridX, gridZ;
 
 void main()
 {
-    // Normalize coordinates to [0, 1]
-    float u = (aPos.x) / gridX; // θ parameter
-    float v = (aPos.y) / (gridY * 8.0); // φ parameter
-    float w = (aPos.z) / gridZ; // Toroidal thickness
+    // Normalize input to [0, 1]
+    float u = aPos.x / gridX; // major angle around torus
+    float w = aPos.z / gridZ; // minor circle angle
 
-    // Calculate angles
-    float theta = 2.0 * 3.1415926535 * u;
-    float phi = 2.0 * 3.1415926535 * w;
+    // Angles
+    float theta = 2.0 * 3.1415926535 * u; // major angle
+    float phi   = 2.0 * 3.1415926535 * w; // minor angle
 
-    // Calculate radii with aspect ratio preservation
-    float majorCircumference = gridX; // Total X-length around major circle
-    float minorCircumference = gridZ; // Total Y-length around minor circle
-    float majorRadius = majorCircumference / (2.0 * 3.1415926535); // Major radius
-    float minorRadius = minorCircumference / (2.0 * 3.1415926535);
+    // Radii
+    float majorRadius = gridX / (2.0 * 3.1415926535); // donut center distance
+    float minorRadius = gridZ / (2.0 * 3.1415926535); // donut tube radius
 
-    float effective_r = minorRadius * exp(v ) / 2.0;
+    float effective_r = minorRadius + aPos.y;
 
-    // Torus parametrization
+    // Parametrize torus
     vec3 pos;
     pos.x = (majorRadius + effective_r * cos(phi)) * cos(theta);
     pos.y = (majorRadius + effective_r * cos(phi)) * sin(theta);
