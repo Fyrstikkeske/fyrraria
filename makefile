@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -std=c23 -Wall -g -Iclient/libraries
 LDFLAGS = -lGL -lX11 -lXrandr -lm
-SRC = client/main.c
+SRC = client/code/main.c
 OBJ = $(SRC:.c=.o)
 EXE = fyrraria
 
@@ -31,8 +31,12 @@ clean:
 bear: clean
 	bear -- make
 
-run: $(EXE)
+run: clean $(EXE)
 	@echo -e " \033[0;32m ### Compilation is finished \033[0m \n"
+	./$(EXE)
+
+fast: $(EXE)
+	@echo -e " \033[0;32m ### Fast Compilation is finished. Remember fast doesnt update if shaders or headers have been changed\033[0m \n"
 	./$(EXE)
 
 
@@ -45,6 +49,3 @@ safe: LDFLAGS = -lGL -lX11 -lXrandr -lm -fsanitize=undefined -fsanitize=address
 safe: clean $(EXE)
 	@echo -e " \033[0;33m ### SAFE BUILD COMPLETE \033[0m \n"
 	./$(EXE)
-
-
-shader: clean run
