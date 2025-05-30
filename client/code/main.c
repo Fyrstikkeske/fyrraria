@@ -1,7 +1,9 @@
+#include "cglm/types.h"
 #include "meshing.h"
 #include "shader.h"
 #include "utils.h"
 #include "worldgen.h"
+#include <X11/Xlib.h>
 #include <stdint.h>
 
 #define GLAD_GL_IMPLEMENTATION
@@ -13,7 +15,6 @@
 #include <cglm/cglm.h>
 #include <stdio.h>
 #include <stb_image.h>
-#include <math.h>
 
 
 void keyfunc(RGFW_window* win, unsigned char key, unsigned char keyChar, unsigned char keyMod, unsigned char pressed) {
@@ -36,16 +37,19 @@ int main() {
 
     player player;
     glm_vec3_copy((vec3){ 0.0, 1.0, 0.0 }, player.position);
+    int renderdistance = 4;
 
+    int amountofchunkswithinrenderdistance = renderdistance*renderdistance*renderdistance;
+    Chunk *world = malloc(sizeof(Chunk) * amountofchunkswithinrenderdistance);
+    assert(world != NULL);
 
-    struct block *world[Worldx*Worldy*Worldz];
+    setChunkVectors(Worldx, Worldy, Worldz, world, amountofchunkswithinrenderdistance, renderdistance, player.position);
 
-    genworld(Worldx, Worldy, Worldz, chunksize, world);
-
-    int renderdistance = Worldx*Worldy*Worldz;
-    unsigned int VAOs[renderdistance], VBOs[renderdistance], VBOsSize[renderdistance];
-    glGenVertexArrays(renderdistance, VAOs);
-    glGenBuffers(renderdistance,VBOs);
+    genNearbyChunks(Worldx, Worldy, Worldz, world, amountofchunkswithinrenderdistance);
+    
+    unsigned int VAOs[amountofchunkswithinrenderdistance], VBOs[amountofchunkswithinrenderdistance], VBOsSize[amountofchunkswithinrenderdistance];
+    glGenVertexArrays(amountofchunkswithinrenderdistance, VAOs);
+    glGenBuffers(amountofchunkswithinrenderdistance,VBOs);
     int shaderProgram = makeshaderprogram();
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -57,10 +61,7 @@ int main() {
         [woodlog] = loadTextureIntoShaderBindless(shaderProgram, "client/textures/log.png"),
     };
 
-    generatemeshs(renderdistance, chunksize,Worldx, Worldy, Worldz, world, VAOs, VBOs, VBOsSize, handles);
-    
-
-    vec3 cameraFront = { 0.0, 0.0, -1.0 };
+    generatemeshs(amountofchunkswithinrenderdistance, VAOs, VBOs, VBOsSize, handles, world, amountofchunkswithinrenderdistance);
 
     float yaw = -90.0f;
     float pitch = 0.0f;
@@ -98,6 +99,8 @@ int main() {
             }
         }
 
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         vec3 playersNormalisedNormalForCameraUse;
         analyticalFormulaForTorusNormalPoint(player.position, playersNormalisedNormalForCameraUse, Worldx, Worldz, chunksize);
         
@@ -106,31 +109,15 @@ int main() {
 
         vec3 tangent;
         vec3 bitangent;
-
         getTorusSurfaceFrameAtPosition(player.position, tangent, bitangent, Worldx, Worldz, chunksize);
 
-        if (pitch > 89.0f)
-            pitch = 89.0f;
-        if (pitch < -89.0f)
-            pitch = -89.0f;
-        float yawRad   = glm_rad(yaw);
-        float pitchRad = glm_rad(pitch);
-
-        vec3 cameraFrontLocal = {
-            cosf(pitchRad) * cosf(yawRad),   // along tangent
-            sinf(pitchRad),                  // along local “up” (normal)
-            cosf(pitchRad) * sinf(yawRad)    // along bitangent
-        };
-
-        glm_vec3_zero(cameraFront);
-        glm_vec3_muladds(tangent, cameraFrontLocal[0], cameraFront);
-        glm_vec3_muladds(playersNormalisedNormalForCameraUse, cameraFrontLocal[1], cameraFront);
-        glm_vec3_muladds(bitangent, cameraFrontLocal[2], cameraFront);
-        glm_vec3_normalize(cameraFront);
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+        vec3 cameraFrontLocal;
+        vec3 cameraFront = { 0.0, 0.0, -1.0 };
+        rotateCameraFromLocal(pitch, yaw, tangent, bitangent, cameraFront, playersNormalisedNormalForCameraUse, cameraFrontLocal);
         movementcode(win, cameraFrontLocal, player.position);
+
+
+
 
         char buffer[256];
         sprintf(buffer, "Fyrraria: %d", fps);
@@ -149,13 +136,10 @@ int main() {
 
         mat4 modelMatrix = GLM_MAT4_IDENTITY_INIT;
         glUniformMatrix4fv(locations[model], 1, GL_FALSE, (const float *)modelMatrix);
-        
-        
-
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-        for (int worlditer = 0; worlditer < Worldx*Worldy*Worldz; worlditer++){
+        for (int worlditer = 0; worlditer < amountofchunkswithinrenderdistance; worlditer++){
             if (VBOsSize[worlditer] == 0){continue;}
             glBindVertexArray(VAOs[worlditer]);
             glBindBuffer(GL_ARRAY_BUFFER, VBOs[worlditer]);

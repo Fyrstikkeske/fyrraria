@@ -1,5 +1,4 @@
-#ifndef SHADER_H
-#define SHADER_H
+#pragma once
 
 #include <gl.h>
 #include <stdio.h>
@@ -41,5 +40,3 @@ void getGLuniformlocations(int shaderProgram, int locations[]){
     locations[gridX] = gridXLocation;
     locations[gridZ] = gridZLocation;
 }
-
-#endif

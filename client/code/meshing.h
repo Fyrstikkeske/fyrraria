@@ -1,7 +1,7 @@
-#ifndef MESHING_H
-#define MESHING_H
+#pragma once
 
 #include "utils.h"
+#include <stdio.h>
 #include <string.h>
 
 // to add 
@@ -16,23 +16,25 @@ const int blockSize = faceSize * 6;
 //MAKE MESHESHEESA DSA
 // it are over 
 //TODO FIX THIS PIECE OF SHIT UP
+
+//Fuxing this piece of shit sir
+//10% booting up the niggachain
+//20% GEORGE DROID IS HERE
+//99% ok fr though
 static inline void generatemeshs(
     int renderdistance,
-     int chunksize, 
-     int Worldx, 
-     int Worldy, 
-     int Worldz, 
-     struct block *world[Worldx*Worldy*Worldz], 
-     unsigned int* VAOs,
-     unsigned int* VBOs,
-     unsigned int* VBOsSize,
-     const uint64_t* handles
+    unsigned int* VAOs,
+    unsigned int* VBOs,
+    unsigned int* VBOsSize,
+    const uint64_t* handles,
+    Chunk *nearbyChunks,
+    int len
     ){
     for (int iter = 0; iter < renderdistance; iter++){
 
         int meshableBlocks = 0;
         for (int blockiter = 0; blockiter < chunksize * chunksize * chunksize; blockiter++){
-            if (world[iter][blockiter].type == air){continue;}
+            if (nearbyChunks[iter].blocks[blockiter].type == air){continue;}
             meshableBlocks += 1;
         }
 
@@ -41,20 +43,15 @@ static inline void generatemeshs(
             continue;
         }
 
-
         float worldmeshes[blockSize * meshableBlocks];
+
 
         int offset = 0;
         for (int blockiter = 0; blockiter < chunksize * chunksize * chunksize; blockiter++){
-            enum blocktype block = world[iter][blockiter].type;
+            enum blocktype block = nearbyChunks[iter].blocks[blockiter].type;
             if (block == air) continue;
 
             uint64_t textHandleToUse = handles[block];
-
-            // Calculate chunk coordinates
-            int chunkx = iter % Worldx;
-            int chunky = (iter / Worldx) % Worldy;
-            int chunkz = iter / (Worldx * Worldy);
 
             // Calculate local block coordinates within the chunk
             int localx = blockiter % chunksize;
@@ -62,9 +59,9 @@ static inline void generatemeshs(
             int localz = blockiter / (chunksize * chunksize);
 
             // Calculate global coordinates
-            int globalx = chunkx * chunksize + localx;
-            int globaly = chunky * chunksize + localy;
-            int globalz = chunkz * chunksize + localz;
+            int globalx = nearbyChunks[iter].cord[0] * chunksize + localx;
+            int globaly = nearbyChunks[iter].cord[1] * chunksize + localy;
+            int globalz = nearbyChunks[iter].cord[2] * chunksize + localz;
 
             uint32_t handleLo = (uint32_t)(textHandleToUse & 0xFFFFFFFF);
             uint32_t handleHi = (uint32_t)(textHandleToUse >> 32);
@@ -166,5 +163,3 @@ static inline void generatemeshs(
 
     }
 }
-
-#endif

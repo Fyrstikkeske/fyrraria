@@ -1,5 +1,4 @@
-#ifndef TORUS_TRANSFORM_H
-#define TORUS_TRANSFORM_H
+#pragma once
 
 #include <math.h>
 #include <stb_image.h>
@@ -26,7 +25,7 @@ const char fragmentShaderSource[] = {
     , 0
 };
 
-enum blocktype : char{
+enum blocktype : unsigned char{
     grass,
     test,
     air,
@@ -36,12 +35,13 @@ enum blocktype : char{
 
 
 
+
 const int chunksize = 16;
 
 
 //TODO, move this to the worlds so we can get more planets
-const int Worldx = 100;
-const int Worldy = 1;
+const int Worldx = 10;
+const int Worldy = 10;
 const int Worldz = 10;
 
 
@@ -64,6 +64,12 @@ typedef struct {
 struct block{
     enum blocktype type;
 };
+
+typedef struct {
+    struct block blocks[16*16*16];
+    vec3 cord;
+    bool isdirty;
+} Chunk;
 
 static inline void transformPositionFromLocalToGlobalSpaceUsingLinearTorusMethod(
     vec3 localPosition, vec3 globalPosition, int Worldx, int Worldz, int chunksize)
@@ -240,8 +246,24 @@ int makeshaderprogram (){
     return shaderProgram;
 }
 
+static inline void rotateCameraFromLocal(float_t pitch, float_t yaw, float_t* tangent, float_t* bitangent,vec3 cameraFront,  vec3 playersNormalisedNormalForCameraUse, vec3 cameraFrontLocal){ 
+    if (pitch > 89.0f){pitch = 89.0f;}
+    if (pitch < -89.0f){pitch = -89.0f;}
+    
+    float yawRad   = glm_rad(yaw);
+    float pitchRad = glm_rad(pitch);
 
+    vec3 cameraFrontLocalLocal = {
+    cosf(pitchRad) * cosf(yawRad),   // along tangent
+    sinf(pitchRad),                  // along local “up” (normal)
+    cosf(pitchRad) * sinf(yawRad)    // along bitangent
+    };
 
+    glm_vec3_copy(cameraFrontLocalLocal, cameraFrontLocal);
 
-
-#endif
+    glm_vec3_zero(cameraFront);
+    glm_vec3_muladds(tangent, cameraFrontLocal[0], cameraFront);
+    glm_vec3_muladds(playersNormalisedNormalForCameraUse, cameraFrontLocal[1], cameraFront);
+    glm_vec3_muladds(bitangent, cameraFrontLocal[2], cameraFront);
+    glm_vec3_normalize(cameraFront);
+}

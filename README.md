@@ -48,3 +48,5 @@ RGFW: Decent
 28/5-25: uh, dont really know but for large worlds the height algorythm feels better, BUT its aspect ratio varies with an increase of height now. which the previus did not suffer from. now, i have no idea on how to get the best of both worlds. constant aspect ratio of EXP method and the stability of linear method. There is a method out there, i dont know it.
 
 29/5-25: mouse and coordingates are now local to the planet, nextsetp would prob be a refactor cuz holy hell its ugly
+
+30/5-25: Day 1 of adding proper chunking
