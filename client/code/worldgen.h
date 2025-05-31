@@ -1,15 +1,46 @@
 #pragma once
 
 #include "cglm/types.h"
+#include "meshing.h"
 #include "utils.h"
 
 #include <X11/Xlib.h>
-#include <stdio.h>
-#include <stdlib.h>
+
+#define _POSIX_C_SOURCE 199309L
+#define _DEFAULT_SOURCE
 
 
+void setChunkInfoForNewlyGeneratedChunk(
+    int Worldx,
+    int Worldy,
+    int Worldz,
+    Chunk *nearbyChunks,
+    int iter,
+    int renderdistance,
+    vec3 position
+){
 
-static inline void setChunkVectors(
+    int playerchunkx = position[0]/chunksize;
+    int playerchunky = position[1]/chunksize;
+    int playerchunkz = position[2]/chunksize;
+
+    int localx = iter % renderdistance;
+    int localy = (iter / renderdistance) % renderdistance;
+    int localz = iter / (renderdistance * renderdistance);
+
+    int chunkx = playerchunkx + (localx - renderdistance/2);
+    int chunky = playerchunky + (localy - renderdistance/2);
+    int chunkz = playerchunkz + (localz - renderdistance/2);
+
+    
+    nearbyChunks[iter].cord.x = (chunkx % Worldx + Worldx) % Worldx;
+    nearbyChunks[iter].cord.y = (chunky % Worldy + Worldy) % Worldy;
+    nearbyChunks[iter].cord.z = (chunkz % Worldz + Worldz) % Worldz;
+    
+    nearbyChunks[iter].isdirty = True;
+}
+
+static inline void chunkUpdator(
     int Worldx,
     int Worldy,
     int Worldz,
@@ -18,16 +49,37 @@ static inline void setChunkVectors(
     int renderdistance,
     vec3 position
 ){
-    for (int chunkiter = 0; chunkiter < len; chunkiter++) {
-        int localx = chunkiter % renderdistance;
-        int localy = (chunkiter / renderdistance) % renderdistance;
-        int localz = chunkiter / (renderdistance * renderdistance);
+    int playerchunkx = position[0] / chunksize;
+    int playerchunky = position[1] / chunksize;
+    int playerchunkz = position[2] / chunksize;
 
-        nearbyChunks[chunkiter].cord[0] = (localx - (int)(renderdistance/2)) % Worldx;
-        nearbyChunks[chunkiter].cord[1] = (localy - (int)(renderdistance/2)) % Worldy;
-        nearbyChunks[chunkiter].cord[2] = (localz - (int)(renderdistance/2)) % Worldz;
+    for (int i = 0; i < len; i++) {
+        int localx = i % renderdistance;
+        int localy = (i / renderdistance) % renderdistance;
+        int localz = i / (renderdistance * renderdistance);
+
+        int chunkx = playerchunkx + (localx - renderdistance/2);
+        int chunky = playerchunky + (localy - renderdistance/2);
+        int chunkz = playerchunkz + (localz - renderdistance/2);
+        
+        chunkx = (chunkx % Worldx + Worldx) % Worldx;
+        chunky = (chunky % Worldy + Worldy) % Worldy;
+        chunkz = (chunkz % Worldz + Worldz) % Worldz;
+
+        // Only update if coordinates changed
+        if (nearbyChunks[i].cord.x != chunkx ||
+            nearbyChunks[i].cord.y != chunky ||
+            nearbyChunks[i].cord.z != chunkz) 
+        {
+            nearbyChunks[i].cord.x = chunkx;
+            nearbyChunks[i].cord.y = chunky;
+            nearbyChunks[i].cord.z = chunkz;
+            nearbyChunks[i].isdirty = true;
+        }
     }
 }
+
+
 
 
 static inline void genNearbyChunks(
@@ -35,10 +87,12 @@ static inline void genNearbyChunks(
     int Worldy,
     int Worldz,
     Chunk *nearbyChunks,
-    int len
+    int len,
+    const uint64_t* handles
     ){
     for (int chunkiter = 0; chunkiter < len; chunkiter++) {
-        if (nearbyChunks[chunkiter].isdirty == False){continue;}
+        if (nearbyChunks[chunkiter].isdirty == false){continue;}
+        nearbyChunks[chunkiter].isdirty = false;
 
         for (int blockiter = 0; blockiter < chunksize * chunksize * chunksize; blockiter++) {
             nearbyChunks[chunkiter].blocks[blockiter].type = air;
@@ -47,9 +101,9 @@ static inline void genNearbyChunks(
             int localy = (blockiter / chunksize) % chunksize;
             int localz = blockiter / (chunksize * chunksize);
 
-            int globalx = nearbyChunks[chunkiter].cord[0] * chunksize + localx;
-            int globaly = nearbyChunks[chunkiter].cord[1] * chunksize + localy;
-            int globalz = nearbyChunks[chunkiter].cord[2] * chunksize + localz;
+            int globalx = nearbyChunks[chunkiter].cord.x * chunksize + localx;
+            int globaly = nearbyChunks[chunkiter].cord.y * chunksize + localy;
+            int globalz = nearbyChunks[chunkiter].cord.z * chunksize + localz;
 
 
             if (globaly == 0){
@@ -89,6 +143,7 @@ static inline void genNearbyChunks(
                 nearbyChunks[chunkiter].blocks[blockiter].type = leaf;
             }
         }
+        generatemesh(chunkiter, handles, nearbyChunks);
     }
 }
 

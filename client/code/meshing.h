@@ -1,7 +1,6 @@
 #pragma once
 
 #include "utils.h"
-#include <stdio.h>
 #include <string.h>
 
 // to add 
@@ -21,26 +20,23 @@ const int blockSize = faceSize * 6;
 //10% booting up the niggachain
 //20% GEORGE DROID IS HERE
 //99% ok fr though
-static inline void generatemeshs(
-    int renderdistance,
-    unsigned int* VAOs,
-    unsigned int* VBOs,
-    unsigned int* VBOsSize,
+//99.9% current method sucks
+static inline void generatemesh(
+    int pointe,
     const uint64_t* handles,
-    Chunk *nearbyChunks,
-    int len
+    Chunk *nearbyChunks
     ){
-    for (int iter = 0; iter < renderdistance; iter++){
-
         int meshableBlocks = 0;
         for (int blockiter = 0; blockiter < chunksize * chunksize * chunksize; blockiter++){
-            if (nearbyChunks[iter].blocks[blockiter].type == air){continue;}
+            enum blocktype block = nearbyChunks[pointe].blocks[blockiter].type;
+            if (block == air){continue;}
             meshableBlocks += 1;
         }
 
-        VBOsSize[iter] = blockSize * meshableBlocks;
+        
+        nearbyChunks[pointe].vertices = blockSize * meshableBlocks;
         if (meshableBlocks == 0){
-            continue;
+            return;
         }
 
         float worldmeshes[blockSize * meshableBlocks];
@@ -48,7 +44,7 @@ static inline void generatemeshs(
 
         int offset = 0;
         for (int blockiter = 0; blockiter < chunksize * chunksize * chunksize; blockiter++){
-            enum blocktype block = nearbyChunks[iter].blocks[blockiter].type;
+            enum blocktype block = nearbyChunks[pointe].blocks[blockiter].type;
             if (block == air) continue;
 
             uint64_t textHandleToUse = handles[block];
@@ -59,9 +55,9 @@ static inline void generatemeshs(
             int localz = blockiter / (chunksize * chunksize);
 
             // Calculate global coordinates
-            int globalx = nearbyChunks[iter].cord[0] * chunksize + localx;
-            int globaly = nearbyChunks[iter].cord[1] * chunksize + localy;
-            int globalz = nearbyChunks[iter].cord[2] * chunksize + localz;
+            int globalx = nearbyChunks[pointe].cord.x * chunksize + localx;
+            int globaly = nearbyChunks[pointe].cord.y * chunksize + localy;
+            int globalz = nearbyChunks[pointe].cord.z * chunksize + localz;
 
             uint32_t handleLo = (uint32_t)(textHandleToUse & 0xFFFFFFFF);
             uint32_t handleHi = (uint32_t)(textHandleToUse >> 32);
@@ -144,10 +140,10 @@ static inline void generatemeshs(
             offset += blockSize;
         }
 
-        glBindVertexArray(VAOs[iter]);
-        glBindBuffer(GL_ARRAY_BUFFER, VBOs[iter]);
+        glBindVertexArray(nearbyChunks[pointe].VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, nearbyChunks[pointe].VBO);
 
-
+        
         glBufferData(GL_ARRAY_BUFFER, sizeof(float) * blockSize * meshableBlocks, worldmeshes, GL_STATIC_DRAW);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)0);
@@ -161,5 +157,5 @@ static inline void generatemeshs(
         glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT, 7 * sizeof(float), (void*)(6 * sizeof(float)));
         glEnableVertexAttribArray(3);
 
-    }
+    
 }

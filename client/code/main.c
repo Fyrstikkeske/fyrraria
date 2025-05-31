@@ -1,10 +1,13 @@
+#define _POSIX_C_SOURCE 199309L
+#define _DEFAULT_SOURCE
+
 #include "cglm/types.h"
-#include "meshing.h"
 #include "shader.h"
 #include "utils.h"
 #include "worldgen.h"
 #include <X11/Xlib.h>
 #include <stdint.h>
+#include <time.h>
 
 #define GLAD_GL_IMPLEMENTATION
 #define RGFW_IMPLEMENTATION
@@ -17,6 +20,9 @@
 #include <stb_image.h>
 
 
+
+
+
 void keyfunc(RGFW_window* win, unsigned char key, unsigned char keyChar, unsigned char keyMod, unsigned char pressed) {
     if (key == RGFW_escape && pressed) {
         RGFW_window_setShouldClose(win, True);
@@ -24,7 +30,7 @@ void keyfunc(RGFW_window* win, unsigned char key, unsigned char keyChar, unsigne
 }
 
 int main() {
-    char windowTitle[256] = "Fyrraria"; //For safety reason must do it like this.
+    char windowTitle[256] = "Fyrraria";
     RGFW_window* win = RGFW_createWindow(windowTitle, RGFW_RECT(0, 0, 800, 600), RGFW_windowCenter);
     gladLoadGL((GLADloadfunc) RGFW_getProcAddress);
 
@@ -37,19 +43,17 @@ int main() {
 
     player player;
     glm_vec3_copy((vec3){ 0.0, 1.0, 0.0 }, player.position);
-    int renderdistance = 4;
-
+    int renderdistance = 15;
     int amountofchunkswithinrenderdistance = renderdistance*renderdistance*renderdistance;
-    Chunk *world = malloc(sizeof(Chunk) * amountofchunkswithinrenderdistance);
-    assert(world != NULL);
-
-    setChunkVectors(Worldx, Worldy, Worldz, world, amountofchunkswithinrenderdistance, renderdistance, player.position);
-
-    genNearbyChunks(Worldx, Worldy, Worldz, world, amountofchunkswithinrenderdistance);
     
-    unsigned int VAOs[amountofchunkswithinrenderdistance], VBOs[amountofchunkswithinrenderdistance], VBOsSize[amountofchunkswithinrenderdistance];
-    glGenVertexArrays(amountofchunkswithinrenderdistance, VAOs);
-    glGenBuffers(amountofchunkswithinrenderdistance,VBOs);
+    Chunk *planet = malloc(sizeof(Chunk) * amountofchunkswithinrenderdistance);
+    assert(planet != NULL);
+
+    for (int iter = 0; iter < amountofchunkswithinrenderdistance; iter++){
+        glGenVertexArrays(1, &planet[iter].VAO);
+        glGenBuffers(1,&planet[iter].VBO);
+    }
+
     int shaderProgram = makeshaderprogram();
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -60,8 +64,6 @@ int main() {
         [leaf] = loadTextureIntoShaderBindless(shaderProgram, "client/textures/leaf.png"),
         [woodlog] = loadTextureIntoShaderBindless(shaderProgram, "client/textures/log.png"),
     };
-
-    generatemeshs(amountofchunkswithinrenderdistance, VAOs, VBOs, VBOsSize, handles, world, amountofchunkswithinrenderdistance);
 
     float yaw = -90.0f;
     float pitch = 0.0f;
@@ -80,13 +82,23 @@ int main() {
     u32 fps = 0;
     u32 frames = 0;
     const double startTime = RGFW_getTime();
+    
+    static double lastPrintTime = 0;
+    double lastFrameTime = RGFW_getTime();
+
     while (RGFW_window_shouldClose(win) == RGFW_FALSE) {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        double currentFrameStart = RGFW_getTime();
+        double frameTime = currentFrameStart - lastFrameTime;
+        lastFrameTime = currentFrameStart;
+
         while (RGFW_window_checkEvent(win) != NULL) {
             if (win->event.type == RGFW_quit) break;
             
             if (win->event.type == RGFW_mousePosChanged) {
                 yaw -= win->event.vector.x * sensitivity;
                 pitch -= win->event.vector.y * sensitivity;
+
             };
 
             if (win->event.type == RGFW_focusIn) {
@@ -98,8 +110,9 @@ int main() {
                 glViewport(0, 0, win->r.w, win->r.h);
             }
         }
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        if (pitch > 89.0f){pitch = 89.0f;}
+        if (pitch < -89.0f){pitch = -89.0f;}
+        
 
         vec3 playersNormalisedNormalForCameraUse;
         analyticalFormulaForTorusNormalPoint(player.position, playersNormalisedNormalForCameraUse, Worldx, Worldz, chunksize);
@@ -114,13 +127,23 @@ int main() {
         vec3 cameraFrontLocal;
         vec3 cameraFront = { 0.0, 0.0, -1.0 };
         rotateCameraFromLocal(pitch, yaw, tangent, bitangent, cameraFront, playersNormalisedNormalForCameraUse, cameraFrontLocal);
+        
         movementcode(win, cameraFrontLocal, player.position);
-
-
+        
+        amountofchunkswithinrenderdistance = renderdistance*renderdistance*renderdistance;
+        
+        PROFILE_BEGIN(chunkUpdator);
+        chunkUpdator(Worldx, Worldy, Worldz, planet, amountofchunkswithinrenderdistance, renderdistance, player.position);
+        PROFILE_END(chunkUpdator);
+        
+        PROFILE_BEGIN(genNearbyChunks);
+        genNearbyChunks(Worldx, Worldy, Worldz, planet, amountofchunkswithinrenderdistance, handles);
+        PROFILE_END(genNearbyChunks);
+        
 
 
         char buffer[256];
-        sprintf(buffer, "Fyrraria: %d", fps);
+        sprintf(buffer, "Fyrraria: %d | Frame: %.2fms", fps, frameTime * 1000.0);
         const char* fps_str = buffer;
         RGFW_window_setName(win, fps_str);
 
@@ -140,15 +163,21 @@ int main() {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
         for (int worlditer = 0; worlditer < amountofchunkswithinrenderdistance; worlditer++){
-            if (VBOsSize[worlditer] == 0){continue;}
-            glBindVertexArray(VAOs[worlditer]);
-            glBindBuffer(GL_ARRAY_BUFFER, VBOs[worlditer]);
-            glDrawArrays(GL_TRIANGLES, 0, VBOsSize[worlditer]);
+            if (planet[worlditer].vertices == 0){continue;}
+            glBindVertexArray(planet[worlditer].VAO);
+            glBindBuffer(GL_ARRAY_BUFFER, planet[worlditer].VBO);
+            glDrawArrays(GL_TRIANGLES, 0, planet[worlditer].vertices);
         }
+
         
         RGFW_window_swapBuffers(win);
         fps = RGFW_checkFPS(startTime, frames, 60);
         frames++;
+
+        double currentTime = RGFW_getTime();
+        if (lastPrintTime == 0) {
+            lastPrintTime = currentTime;
+        }
     }
 
     RGFW_window_close(win);

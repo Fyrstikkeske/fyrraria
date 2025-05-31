@@ -15,6 +15,41 @@
 #endif
 
 
+#define _POSIX_C_SOURCE 199309L  // For clock_gettime()
+#define _DEFAULT_SOURCE          // For CLOCK_MONOTONIC
+
+
+
+#define PROFILE_ENABLED 1  // Set to 0 to disable profiling
+
+#if PROFILE_ENABLED
+    #define PROFILE_BEGIN(name) \
+        struct timespec profile_start_##name, profile_end_##name; \
+        clock_gettime(CLOCK_MONOTONIC, &profile_start_##name)
+
+    #define PROFILE_END(name) \
+        do { \
+            clock_gettime(CLOCK_MONOTONIC, &profile_end_##name); \
+            double duration = (profile_end_##name.tv_sec - profile_start_##name.tv_sec) * 1000.0 + \
+                            (profile_end_##name.tv_nsec - profile_start_##name.tv_nsec) / 1000000.0; \
+            printf("[PROFILE] %-30s %7.3f ms\n", #name, duration); \
+        } while(0)
+
+    // Simplified PROFILE_SCOPE without comma expression warning
+    #define PROFILE_SCOPE(name) \
+        PROFILE_BEGIN(name); \
+        for(int _done = 0; !_done; _done = 1)
+
+    #define PROFILE_SCOPE_END(name) PROFILE_END(name)
+#else
+    #define PROFILE_BEGIN(name)
+    #define PROFILE_END(name)
+    #define PROFILE_SCOPE(name) for(int _i = 0; _i < 1; _i++)
+    #define PROFILE_SCOPE_END(name)
+#endif
+
+
+
 const char vertexShaderSource[] = { 
     #embed "../shaders/cube.vert" 
     , 0
@@ -40,9 +75,9 @@ const int chunksize = 16;
 
 
 //TODO, move this to the worlds so we can get more planets
-const int Worldx = 10;
-const int Worldy = 10;
-const int Worldz = 10;
+const int Worldx = 50;
+const int Worldy = 1;
+const int Worldz = 25;
 
 
 
@@ -65,10 +100,19 @@ struct block{
     enum blocktype type;
 };
 
+typedef struct{
+    int x;
+    int y;
+    int z;
+} vec3int;
+
 typedef struct {
     struct block blocks[16*16*16];
-    vec3 cord;
+    vec3int cord;
     bool isdirty;
+    GLuint VBO;
+    GLuint VAO;
+    int vertices;
 } Chunk;
 
 static inline void transformPositionFromLocalToGlobalSpaceUsingLinearTorusMethod(
@@ -247,8 +291,7 @@ int makeshaderprogram (){
 }
 
 static inline void rotateCameraFromLocal(float_t pitch, float_t yaw, float_t* tangent, float_t* bitangent,vec3 cameraFront,  vec3 playersNormalisedNormalForCameraUse, vec3 cameraFrontLocal){ 
-    if (pitch > 89.0f){pitch = 89.0f;}
-    if (pitch < -89.0f){pitch = -89.0f;}
+
     
     float yawRad   = glm_rad(yaw);
     float pitchRad = glm_rad(pitch);
