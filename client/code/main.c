@@ -1,13 +1,10 @@
-#define _POSIX_C_SOURCE 199309L
-#define _DEFAULT_SOURCE
-
 #include "cglm/types.h"
 #include "shader.h"
 #include "utils.h"
 #include "worldgen.h"
 #include <X11/Xlib.h>
 #include <stdint.h>
-#include <time.h>
+
 
 #define GLAD_GL_IMPLEMENTATION
 #define RGFW_IMPLEMENTATION
@@ -18,10 +15,12 @@
 #include <cglm/cglm.h>
 #include <stdio.h>
 #include <stb_image.h>
+#include <gl.h>
 
+#define _POSIX_C_SOURCE 199309L
+#define _DEFAULT_SOURCE
 
-
-
+#include <time.h>
 
 void keyfunc(RGFW_window* win, unsigned char key, unsigned char keyChar, unsigned char keyMod, unsigned char pressed) {
     if (key == RGFW_escape && pressed) {
@@ -41,28 +40,22 @@ int main() {
         return -1;
     }
 
-    player player;
-    glm_vec3_copy((vec3){ 0.0, 1.0, 0.0 }, player.position);
-    int renderdistance = 15;
-    int amountofchunkswithinrenderdistance = renderdistance*renderdistance*renderdistance;
+    Player player;
+    glm_vec3_copy((vec3){0.0f, 1.0f, 0.0f}, player.position);
+    const int render_distance = 40;
     
-    Chunk *planet = malloc(sizeof(Chunk) * amountofchunkswithinrenderdistance);
-    assert(planet != NULL);
+    // Hashmap for chunk storage
+    Chunk* planet = NULL;
 
-    for (int iter = 0; iter < amountofchunkswithinrenderdistance; iter++){
-        glGenVertexArrays(1, &planet[iter].VAO);
-        glGenBuffers(1,&planet[iter].VBO);
-    }
-
-    int shaderProgram = makeshaderprogram();
+    int shaderProgram = make_shader_program();
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    uint64_t handles [] ={
-        [grass] = loadTextureIntoShaderBindless(shaderProgram, "client/textures/grass.png"),
-        [test] = loadTextureIntoShaderBindless(shaderProgram, "client/textures/tnt_test.png"),
-        [leaf] = loadTextureIntoShaderBindless(shaderProgram, "client/textures/leaf.png"),
-        [woodlog] = loadTextureIntoShaderBindless(shaderProgram, "client/textures/log.png"),
+    uint64_t handles[] = {
+        [GRASS] = load_texture_into_shader_bindless(shaderProgram, "client/textures/grass.png"),
+        [TEST] = load_texture_into_shader_bindless(shaderProgram, "client/textures/tnt_test.png"),
+        [LEAF] = load_texture_into_shader_bindless(shaderProgram, "client/textures/leaf.png"),
+        [WOOD_LOG] = load_texture_into_shader_bindless(shaderProgram, "client/textures/log.png"),
     };
 
     float yaw = -90.0f;
@@ -74,10 +67,10 @@ int main() {
     RGFW_setKeyCallback(keyfunc);
 
     int locations[5];
-    getGLuniformlocations(shaderProgram, locations);
+    get_GL_uniform_locations(shaderProgram, locations);
 
-    glUniform1f(locations[gridX], Worldx * chunksize);
-    glUniform1f(locations[gridZ], Worldz * chunksize);
+    glUniform1f(locations[GRID_X], WORLD_X * CHUNK_SIZE);
+    glUniform1f(locations[GRID_Z], WORLD_Z * CHUNK_SIZE);
 
     u32 fps = 0;
     u32 frames = 0;
@@ -98,88 +91,88 @@ int main() {
             if (win->event.type == RGFW_mousePosChanged) {
                 yaw -= win->event.vector.x * sensitivity;
                 pitch -= win->event.vector.y * sensitivity;
-
-            };
+            }
 
             if (win->event.type == RGFW_focusIn) {
                 RGFW_window_showMouse(win, 0);
                 RGFW_window_mouseHold(win, RGFW_AREA(win->r.w/2, win->r.h/2));
-            };
+            }
 
-            if (win->event.type == RGFW_windowResized){
+            if (win->event.type == RGFW_windowResized) {
                 glViewport(0, 0, win->r.w, win->r.h);
             }
         }
-        if (pitch > 89.0f){pitch = 89.0f;}
-        if (pitch < -89.0f){pitch = -89.0f;}
         
+        // Clamp pitch values
+        pitch = pitch > 89.0f ? 89.0f : pitch;
+        pitch = pitch < -89.0f ? -89.0f : pitch;
+        
+        vec3 player_normal;
+        analytical_torus_normal(player.position, player_normal, WORLD_X, WORLD_Z, CHUNK_SIZE);
+        
+        vec3 transformed_position;
+        transform_to_global_position(player.position, transformed_position, WORLD_X, WORLD_Z, CHUNK_SIZE);
 
-        vec3 playersNormalisedNormalForCameraUse;
-        analyticalFormulaForTorusNormalPoint(player.position, playersNormalisedNormalForCameraUse, Worldx, Worldz, chunksize);
-        
-        vec3 transformedplayerposition;
-        transformPositionFromLocalToGlobalSpaceUsingLinearTorusMethod(player.position, transformedplayerposition, Worldx, Worldz, chunksize);
+        vec3 tangent, bitangent;
+        get_torus_frame(player.position, tangent, bitangent, WORLD_X, WORLD_Z, CHUNK_SIZE);
 
-        vec3 tangent;
-        vec3 bitangent;
-        getTorusSurfaceFrameAtPosition(player.position, tangent, bitangent, Worldx, Worldz, chunksize);
-
-        vec3 cameraFrontLocal;
-        vec3 cameraFront = { 0.0, 0.0, -1.0 };
-        rotateCameraFromLocal(pitch, yaw, tangent, bitangent, cameraFront, playersNormalisedNormalForCameraUse, cameraFrontLocal);
+        vec3 camera_front_local;
+        vec3 camera_front = {0.0f, 0.0f, -1.0f};
+        rotate_camera(pitch, yaw, tangent, bitangent, camera_front, player_normal, camera_front_local);
         
-        movementcode(win, cameraFrontLocal, player.position);
+        handle_movement(win, camera_front_local, player.position);
         
-        amountofchunkswithinrenderdistance = renderdistance*renderdistance*renderdistance;
+        // Update and generate chunks using hashmap
+        update_nearby_chunks(&planet, WORLD_X, WORLD_Y, WORLD_Z, render_distance, player.position);
+        generate_active_chunks(&planet, handles);
         
-        PROFILE_BEGIN(chunkUpdator);
-        chunkUpdator(Worldx, Worldy, Worldz, planet, amountofchunkswithinrenderdistance, renderdistance, player.position);
-        PROFILE_END(chunkUpdator);
-        
-        PROFILE_BEGIN(genNearbyChunks);
-        genNearbyChunks(Worldx, Worldy, Worldz, planet, amountofchunkswithinrenderdistance, handles);
-        PROFILE_END(genNearbyChunks);
-        
-
-
+        // Update window title with FPS
         char buffer[256];
-        sprintf(buffer, "Fyrraria: %d | Frame: %.2fms", fps, frameTime * 1000.0);
-        const char* fps_str = buffer;
-        RGFW_window_setName(win, fps_str);
+        snprintf(buffer, sizeof(buffer), "Fyrraria: %d | Frame: %.2fms", fps, frameTime * 1000.0);
+        RGFW_window_setName(win, buffer);
 
-        mat4 viewmatrix;
+        // Set up view matrix
+        mat4 view_matrix;
         vec3 center;
-        glm_vec3_add(transformedplayerposition, cameraFront, center);
-        glm_lookat(transformedplayerposition, center, playersNormalisedNormalForCameraUse, viewmatrix);
-        glUniformMatrix4fv(locations[view], 1, GL_FALSE, (const float *)viewmatrix);
+        glm_vec3_add(transformed_position, camera_front, center);
+        glm_lookat(transformed_position, center, player_normal, view_matrix);
+        glUniformMatrix4fv(locations[VIEW], 1, GL_FALSE, (const float *)view_matrix);
 
-        mat4 projectionmatrix;
-        glm_perspective(glm_rad(70), (float)win->r.w/win->r.h, 0.1, 100000.0, projectionmatrix);
-        glUniformMatrix4fv(locations[projection], 1, GL_FALSE, (const float *)projectionmatrix);
+        // Set up projection matrix
+        mat4 projection_matrix;
+        glm_perspective(glm_rad(70.0f), (float)win->r.w/win->r.h, 0.1f, 100000.0f, projection_matrix);
+        glUniformMatrix4fv(locations[PROJECTION], 1, GL_FALSE, (const float *)projection_matrix);
 
-        mat4 modelMatrix = GLM_MAT4_IDENTITY_INIT;
-        glUniformMatrix4fv(locations[model], 1, GL_FALSE, (const float *)modelMatrix);
+        // Set model matrix
+        mat4 model_matrix = GLM_MAT4_IDENTITY_INIT;
+        glUniformMatrix4fv(locations[MODEL], 1, GL_FALSE, (const float *)model_matrix);
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-        for (int worlditer = 0; worlditer < amountofchunkswithinrenderdistance; worlditer++){
-            if (planet[worlditer].vertices == 0){continue;}
-            glBindVertexArray(planet[worlditer].VAO);
-            glBindBuffer(GL_ARRAY_BUFFER, planet[worlditer].VBO);
-            glDrawArrays(GL_TRIANGLES, 0, planet[worlditer].vertices);
+        // Render chunks from hashmap
+        Chunk *current_chunk, *tmp;
+        HASH_ITER(hh, planet, current_chunk, tmp) {
+            if (current_chunk->vertices == 0) continue;
+            
+            glBindVertexArray(current_chunk->VAO);
+            glBindBuffer(GL_ARRAY_BUFFER, current_chunk->VBO);
+            glDrawArrays(GL_TRIANGLES, 0, current_chunk->vertices);
         }
-
         
         RGFW_window_swapBuffers(win);
         fps = RGFW_checkFPS(startTime, frames, 60);
         frames++;
-
-        double currentTime = RGFW_getTime();
-        if (lastPrintTime == 0) {
-            lastPrintTime = currentTime;
-        }
     }
 
+    // Clean up hashmap
+    Chunk *chunk, *tmp;
+    HASH_ITER(hh, planet, chunk, tmp) {
+        HASH_DEL(planet, chunk);
+        glDeleteVertexArrays(1, &chunk->VAO);
+        glDeleteBuffers(1, &chunk->VBO);
+        free(chunk);
+    }
+    
     RGFW_window_close(win);
     return 0;
 }

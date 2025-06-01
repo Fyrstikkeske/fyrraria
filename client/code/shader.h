@@ -4,14 +4,14 @@
 #include <stdio.h>
 
 enum uniformlocations : char{
-    model,
-    view,
-    projection,
-    gridX,
-    gridZ,
+    MODEL,
+    VIEW,
+    PROJECTION,
+    GRID_X,
+    GRID_Z,
 };
 
-void getGLuniformlocations(int shaderProgram, int locations[]){
+void get_GL_uniform_locations(int shaderProgram, int locations[]){
     int modelLocaction = glGetUniformLocation(shaderProgram, "model");
     int viewLocation = glGetUniformLocation(shaderProgram, "view");
     int projectionLocation = glGetUniformLocation(shaderProgram, "projection");
@@ -34,9 +34,9 @@ void getGLuniformlocations(int shaderProgram, int locations[]){
         printf("cant find model in shader location \n");
     }
 
-    locations[model] = modelLocaction;
-    locations[view] = viewLocation;
-    locations[projection] = projectionLocation;
-    locations[gridX] = gridXLocation;
-    locations[gridZ] = gridZLocation;
+    locations[MODEL] = modelLocaction;
+    locations[VIEW] = viewLocation;
+    locations[PROJECTION] = projectionLocation;
+    locations[GRID_X] = gridXLocation;
+    locations[GRID_Z] = gridZLocation;
 }

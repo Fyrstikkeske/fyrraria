@@ -49,4 +49,4 @@ RGFW: Decent
 
 29/5-25: mouse and coordingates are now local to the planet, nextsetp would prob be a refactor cuz holy hell its ugly
 
-30/5-25: Day 1 of adding proper chunking
+30/5-25: Day 1 of adding proper chunking. So technically its day 2, But i havent slept yet so it doesnt count. Regardless added uthash for that legendary O(1) in chunking logic. So now its stable 60 which is max due to opengl saying so. Which is super noice. No more lag(its still laggy with big render distances)

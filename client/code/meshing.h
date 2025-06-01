@@ -2,10 +2,6 @@
 
 #include "utils.h"
 #include <string.h>
-
-// to add 
-// unsigned int VAOs[renderdistance], VBOs[renderdistance], VBOsSize[renderdistance]; and some more
-
 const int vertexSize = 3+2+1+1;
 
 const int faceSize = vertexSize * 6;
@@ -20,21 +16,20 @@ const int blockSize = faceSize * 6;
 //10% booting up the niggachain
 //20% GEORGE DROID IS HERE
 //99% ok fr though
-//99.9% current method sucks
-static inline void generatemesh(
-    int pointe,
-    const uint64_t* handles,
-    Chunk *nearbyChunks
+//99.9% GEORGE DROID method sucks
+static inline void generate_mesh_for_chunk(
+    Chunk *chunk,
+    const uint64_t* handles
     ){
         int meshableBlocks = 0;
-        for (int blockiter = 0; blockiter < chunksize * chunksize * chunksize; blockiter++){
-            enum blocktype block = nearbyChunks[pointe].blocks[blockiter].type;
-            if (block == air){continue;}
+        for (int blockiter = 0; blockiter < CHUNK_VOLUME; blockiter++){
+            enum blocktype block = chunk->blocks[blockiter].type;
+            if (block == AIR){continue;}
             meshableBlocks += 1;
         }
 
         
-        nearbyChunks[pointe].vertices = blockSize * meshableBlocks;
+        chunk->vertices = blockSize * meshableBlocks;
         if (meshableBlocks == 0){
             return;
         }
@@ -43,21 +38,21 @@ static inline void generatemesh(
 
 
         int offset = 0;
-        for (int blockiter = 0; blockiter < chunksize * chunksize * chunksize; blockiter++){
-            enum blocktype block = nearbyChunks[pointe].blocks[blockiter].type;
-            if (block == air) continue;
+        for (int blockiter = 0; blockiter < CHUNK_VOLUME; blockiter++){
+            enum blocktype block = chunk->blocks[blockiter].type;
+            if (block == AIR) continue;
 
             uint64_t textHandleToUse = handles[block];
 
             // Calculate local block coordinates within the chunk
-            int localx = blockiter % chunksize;
-            int localy = (blockiter / chunksize) % chunksize;
-            int localz = blockiter / (chunksize * chunksize);
+            int localx = blockiter % CHUNK_SIZE;
+            int localy = (blockiter / CHUNK_SIZE) % CHUNK_SIZE;
+            int localz = blockiter / (CHUNK_SIZE * CHUNK_SIZE);
 
             // Calculate global coordinates
-            int globalx = nearbyChunks[pointe].cord.x * chunksize + localx;
-            int globaly = nearbyChunks[pointe].cord.y * chunksize + localy;
-            int globalz = nearbyChunks[pointe].cord.z * chunksize + localz;
+            int globalx = chunk->Key.x * CHUNK_SIZE + localx;
+            int globaly = chunk->Key.y * CHUNK_SIZE + localy;
+            int globalz = chunk->Key.z * CHUNK_SIZE + localz;
 
             uint32_t handleLo = (uint32_t)(textHandleToUse & 0xFFFFFFFF);
             uint32_t handleHi = (uint32_t)(textHandleToUse >> 32);
@@ -140,8 +135,8 @@ static inline void generatemesh(
             offset += blockSize;
         }
 
-        glBindVertexArray(nearbyChunks[pointe].VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, nearbyChunks[pointe].VBO);
+        glBindVertexArray(chunk->VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, chunk->VBO);
 
         
         glBufferData(GL_ARRAY_BUFFER, sizeof(float) * blockSize * meshableBlocks, worldmeshes, GL_STATIC_DRAW);

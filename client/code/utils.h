@@ -7,6 +7,7 @@
 #include <cglm/cglm.h>
 #include <gl.h>
 #include <RGFW.h>
+#include "uthash.h"
 
 #define GLAD_GL_IMPLEMENTATION
 
@@ -15,8 +16,8 @@
 #endif
 
 
-#define _POSIX_C_SOURCE 199309L  // For clock_gettime()
-#define _DEFAULT_SOURCE          // For CLOCK_MONOTONIC
+#define _POSIX_C_SOURCE 199309L
+#define _DEFAULT_SOURCE
 
 
 
@@ -61,23 +62,24 @@ const char fragmentShaderSource[] = {
 };
 
 enum blocktype : unsigned char{
-    grass,
-    test,
-    air,
-    leaf,
-    woodlog,
+    GRASS,
+    TEST,
+    AIR,
+    LEAF,
+    WOOD_LOG,
 };
 
 
 
 
-const int chunksize = 16;
+const int CHUNK_SIZE = 16;
+const int CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
 
-//TODO, move this to the worlds so we can get more planets
-const int Worldx = 50;
-const int Worldy = 1;
-const int Worldz = 25;
+//TODO, move this to the planets struct so we can get more planets
+const int WORLD_X = 62;
+const int WORLD_Y = 1;
+const int WORLD_Z = 10;
 
 
 
@@ -88,7 +90,7 @@ struct shaderstruct{
 
 typedef struct {
     vec3 position;
-} player;
+} Player;
 
 typedef struct {
     GLuint vbo;
@@ -107,15 +109,17 @@ typedef struct{
 } vec3int;
 
 typedef struct {
+    vec3int Key;
     struct block blocks[16*16*16];
-    vec3int cord;
     bool isdirty;
     GLuint VBO;
     GLuint VAO;
     int vertices;
+    bool is_active;
+    UT_hash_handle hh;
 } Chunk;
 
-static inline void transformPositionFromLocalToGlobalSpaceUsingLinearTorusMethod(
+static inline void transform_to_global_position(
     vec3 localPosition, vec3 globalPosition, int Worldx, int Worldz, int chunksize)
 {
     float u = localPosition[0] / (Worldx * chunksize);
@@ -135,7 +139,7 @@ static inline void transformPositionFromLocalToGlobalSpaceUsingLinearTorusMethod
 
     glm_vec3_copy((vec3){x, y, z}, globalPosition);
 }
-static inline void analyticalFormulaForTorusNormalPoint(vec3 input, vec3 dest, int Worldx, int Worldz, int chunksize){
+static inline void analytical_torus_normal(vec3 input, vec3 dest, int Worldx, int Worldz, int chunksize){
     float u = input[0] / (Worldx * chunksize);
     float w = input[2] / (Worldz * chunksize);
     float theta = 2.0 * M_PI * u;
@@ -155,7 +159,7 @@ static inline void analyticalFormulaForTorusNormalPoint(vec3 input, vec3 dest, i
 
     glm_vec3_copy(normal, dest);
 }
-static inline void movementcode(RGFW_window* win, vec3 cameraFrontLocal, vec3 playerpos){
+static inline void handle_movement(RGFW_window* win, vec3 cameraFrontLocal, vec3 playerpos){
     float horizontalSpeed;
     if (RGFW_isPressed(win, RGFW_controlL)) {
         horizontalSpeed = 1;
@@ -188,14 +192,14 @@ static inline void movementcode(RGFW_window* win, vec3 cameraFrontLocal, vec3 pl
         playerpos[1] -= horizontalSpeed;
     }
 }
-void getTorusSurfaceFrameAtPosition(
+void get_torus_frame(
     vec3 position,
     vec3 tangentOut,
     vec3 bitangentOut,
     int Worldx, int Worldz, float chunksize)
 {
     vec3 normal;
-    analyticalFormulaForTorusNormalPoint(position, normal, Worldx, Worldz, chunksize);
+    analytical_torus_normal(position, normal, Worldx, Worldz, chunksize);
 
     float delta = 0.1f;
     vec3 pos_plus_dx, pos_minus_dx, pos_plus_dz, pos_minus_dz;
@@ -203,16 +207,16 @@ void getTorusSurfaceFrameAtPosition(
     // Tangent (dx)
     vec3 local_plus_dx = { position[0] + delta, position[1], position[2] };
     vec3 local_minus_dx = { position[0] - delta, position[1], position[2] };
-    transformPositionFromLocalToGlobalSpaceUsingLinearTorusMethod(local_plus_dx, pos_plus_dx, Worldx, Worldz, chunksize);
-    transformPositionFromLocalToGlobalSpaceUsingLinearTorusMethod(local_minus_dx, pos_minus_dx, Worldx, Worldz, chunksize);
+    transform_to_global_position(local_plus_dx, pos_plus_dx, Worldx, Worldz, chunksize);
+    transform_to_global_position(local_minus_dx, pos_minus_dx, Worldx, Worldz, chunksize);
     glm_vec3_sub(pos_plus_dx, pos_minus_dx, tangentOut);
     glm_vec3_normalize(tangentOut);
 
     // Bitangent (dz)
     vec3 local_plus_dz = { position[0], position[1], position[2] + delta };
     vec3 local_minus_dz = { position[0], position[1], position[2] - delta };
-    transformPositionFromLocalToGlobalSpaceUsingLinearTorusMethod(local_plus_dz, pos_plus_dz, Worldx, Worldz, chunksize);
-    transformPositionFromLocalToGlobalSpaceUsingLinearTorusMethod(local_minus_dz, pos_minus_dz, Worldx, Worldz, chunksize);
+    transform_to_global_position(local_plus_dz, pos_plus_dz, Worldx, Worldz, chunksize);
+    transform_to_global_position(local_minus_dz, pos_minus_dz, Worldx, Worldz, chunksize);
     glm_vec3_sub(pos_plus_dz, pos_minus_dz, bitangentOut);
     glm_vec3_normalize(bitangentOut);
 
@@ -223,7 +227,7 @@ void getTorusSurfaceFrameAtPosition(
 }
 
 
-unsigned long loadTextureIntoShaderBindless(int shaderProgram, const char* pathToFile) {
+unsigned long load_texture_into_shader_bindless(int shaderProgram, const char* pathToFile) {
     int width, height, nrChannels;
     unsigned char *data = stbi_load(pathToFile, &width, &height, &nrChannels, 0);
     if (data == NULL) {
@@ -254,7 +258,7 @@ void checkShaderCompilation(GLuint shader, const char* type) {
     }
 }
 
-int makeshaderprogram (){
+int make_shader_program (){
     unsigned int vertexShader;
     vertexShader = glCreateShader(GL_VERTEX_SHADER);
 
@@ -290,7 +294,7 @@ int makeshaderprogram (){
     return shaderProgram;
 }
 
-static inline void rotateCameraFromLocal(float_t pitch, float_t yaw, float_t* tangent, float_t* bitangent,vec3 cameraFront,  vec3 playersNormalisedNormalForCameraUse, vec3 cameraFrontLocal){ 
+static inline void rotate_camera(float_t pitch, float_t yaw, float_t* tangent, float_t* bitangent,vec3 cameraFront,  vec3 playersNormalisedNormalForCameraUse, vec3 cameraFrontLocal){ 
 
     
     float yawRad   = glm_rad(yaw);
