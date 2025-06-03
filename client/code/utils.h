@@ -51,6 +51,7 @@
 
 
 
+
 const char vertexShaderSource[] = { 
     #embed "../shaders/cube.vert" 
     , 0
@@ -61,25 +62,38 @@ const char fragmentShaderSource[] = {
     , 0
 };
 
-enum blocktype : unsigned char{
-    GRASS,
-    TEST,
+enum Blocktype : unsigned char{
     AIR,
+    TEST,
+    GRASS,
     LEAF,
     WOOD_LOG,
+    WATER,
+};
+
+const bool DoesBlockOcclude[] = {
+    [AIR] = false,
+    [GRASS] = true,
+    [TEST] = true,
+    [LEAF] = true,
+    [WOOD_LOG] = true,
+    [WATER] = true,
 };
 
 
 
+constexpr int CHUNK_SIZE = 16;
+constexpr int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
+constexpr int CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
-const int CHUNK_SIZE = 16;
-const int CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
-
+constexpr int CHUNK_SIZE_P = CHUNK_SIZE + 2;
+constexpr int CHUNK_AREA_P = CHUNK_SIZE_P * CHUNK_SIZE_P;
+constexpr int CHUNK_VOLUME_P = CHUNK_SIZE_P * CHUNK_SIZE_P * CHUNK_SIZE_P;
 
 //TODO, move this to the planets struct so we can get more planets
-const int WORLD_X = 62;
-const int WORLD_Y = 1;
-const int WORLD_Z = 10;
+const int WORLD_X = 201;
+const int WORLD_Y = 5;
+const int WORLD_Z = 50;
 
 
 
@@ -99,7 +113,7 @@ typedef struct {
 
 
 struct block{
-    enum blocktype type;
+    enum Blocktype type;
 };
 
 typedef struct{
@@ -110,7 +124,7 @@ typedef struct{
 
 typedef struct {
     vec3int Key;
-    struct block blocks[16*16*16];
+    struct block blocks[CHUNK_VOLUME];
     bool isdirty;
     GLuint VBO;
     GLuint VAO;
@@ -245,6 +259,8 @@ unsigned long load_texture_into_shader_bindless(int shaderProgram, const char* p
     glMakeTextureHandleResidentARB(handle);
     return handle;
 }
+
+
 
 void checkShaderCompilation(GLuint shader, const char* type) {
     GLint success;

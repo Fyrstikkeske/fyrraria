@@ -1,3 +1,6 @@
+#define _POSIX_C_SOURCE 199309L
+#define _DEFAULT_SOURCE
+
 #include "cglm/types.h"
 #include "shader.h"
 #include "utils.h"
@@ -6,10 +9,12 @@
 #include <stdint.h>
 
 
+
 #define GLAD_GL_IMPLEMENTATION
 #define RGFW_IMPLEMENTATION
 #define RGL_LOAD_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
+#define FNL_IMPL
 
 #include <RGFW.h>
 #include <cglm/cglm.h>
@@ -17,8 +22,7 @@
 #include <stb_image.h>
 #include <gl.h>
 
-#define _POSIX_C_SOURCE 199309L
-#define _DEFAULT_SOURCE
+
 
 #include <time.h>
 
@@ -42,8 +46,8 @@ int main() {
 
     Player player;
     glm_vec3_copy((vec3){0.0f, 1.0f, 0.0f}, player.position);
-    const int render_distance = 40;
-    
+    const int render_distance = 100;
+    vec3int previus_chunk_center;
     // Hashmap for chunk storage
     Chunk* planet = NULL;
 
@@ -51,11 +55,12 @@ int main() {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    uint64_t handles[] = {
+    uint64_t textuer_handles[] = {
         [GRASS] = load_texture_into_shader_bindless(shaderProgram, "client/textures/grass.png"),
         [TEST] = load_texture_into_shader_bindless(shaderProgram, "client/textures/tnt_test.png"),
         [LEAF] = load_texture_into_shader_bindless(shaderProgram, "client/textures/leaf.png"),
         [WOOD_LOG] = load_texture_into_shader_bindless(shaderProgram, "client/textures/log.png"),
+        [WATER] = load_texture_into_shader_bindless(shaderProgram, "client/textures/water.png"),
     };
 
     float yaw = -90.0f;
@@ -66,6 +71,8 @@ int main() {
     RGFW_window_mouseHold(win, RGFW_AREA(win->r.w / 2, win->r.h / 2));
     RGFW_setKeyCallback(keyfunc);
 
+    
+    RGFW_window_swapInterval(win, 0);
     int locations[5];
     get_GL_uniform_locations(shaderProgram, locations);
 
@@ -75,11 +82,10 @@ int main() {
     u32 fps = 0;
     u32 frames = 0;
     const double startTime = RGFW_getTime();
-    
-    static double lastPrintTime = 0;
     double lastFrameTime = RGFW_getTime();
-
+    
     while (RGFW_window_shouldClose(win) == RGFW_FALSE) {
+        PROFILE_BEGIN(GameLoop);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         double currentFrameStart = RGFW_getTime();
         double frameTime = currentFrameStart - lastFrameTime;
@@ -121,14 +127,12 @@ int main() {
         rotate_camera(pitch, yaw, tangent, bitangent, camera_front, player_normal, camera_front_local);
         
         handle_movement(win, camera_front_local, player.position);
-        
         // Update and generate chunks using hashmap
-        update_nearby_chunks(&planet, WORLD_X, WORLD_Y, WORLD_Z, render_distance, player.position);
-        generate_active_chunks(&planet, handles);
         
+        update_nearby_chunks(&planet, WORLD_X, WORLD_Y, WORLD_Z, render_distance, player.position, &previus_chunk_center, textuer_handles);
         // Update window title with FPS
         char buffer[256];
-        snprintf(buffer, sizeof(buffer), "Fyrraria: %d | Frame: %.2fms", fps, frameTime * 1000.0);
+        snprintf(buffer, sizeof(buffer), "Fyrraria: %d | Frame: %.2fms | Pos:X:%.1f Y:%.1f Z:%.1f", fps, frameTime * 1000.0, player.position[0], player.position[1], player.position[2]);
         RGFW_window_setName(win, buffer);
 
         // Set up view matrix
@@ -148,18 +152,20 @@ int main() {
         glUniformMatrix4fv(locations[MODEL], 1, GL_FALSE, (const float *)model_matrix);
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
+        PROFILE_BEGIN(Renderloop);
         // Render chunks from hashmap
         Chunk *current_chunk, *tmp;
         HASH_ITER(hh, planet, current_chunk, tmp) {
             if (current_chunk->vertices == 0) continue;
-            
             glBindVertexArray(current_chunk->VAO);
             glBindBuffer(GL_ARRAY_BUFFER, current_chunk->VBO);
             glDrawArrays(GL_TRIANGLES, 0, current_chunk->vertices);
         }
-        
+        PROFILE_END(Renderloop);
+        PROFILE_BEGIN(SwapBuffer);
         RGFW_window_swapBuffers(win);
+        PROFILE_END(SwapBuffer);
+        PROFILE_END(GameLoop);
         fps = RGFW_checkFPS(startTime, frames, 60);
         frames++;
     }

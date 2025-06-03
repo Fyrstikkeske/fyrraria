@@ -2,16 +2,16 @@ to run the program : make run
 
 if your ide doesnt work, try "make bear".
 
+# Bugs to fix
+If the render distance is larger than world x or z, it will cause chunks to dissapear on movement.
 
 # TODO
 
 - embed images, currently only embeds shaders
 
-- proper chunking. inwork
+- make the binary mesher handle cases outside of itself. Regenerate chunks next to a chunk addition and deletion
 
 ## research todo
-
-- make the torus go down instead of up?
 
 # technology using
 
@@ -50,3 +50,5 @@ RGFW: Decent
 29/5-25: mouse and coordingates are now local to the planet, nextsetp would prob be a refactor cuz holy hell its ugly
 
 30/5-25: Day 1 of adding proper chunking. So technically its day 2, But i havent slept yet so it doesnt count. Regardless added uthash for that legendary O(1) in chunking logic. So now its stable 60 which is max due to opengl saying so. Which is super noice. No more lag(its still laggy with big render distances)
+
+3/6-25: YAAAAA, OKOKOk, things i did last couple of days. Made the worldgen know which chunks to update and remove without iterating through the whole thing. Secondly, TANTANS BINARY FACE CULLING. thanks to theese things i dont even need to multithread world gen until like 10-15 render distance. (its still smart though thanks to perlin noise)
