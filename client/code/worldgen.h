@@ -40,7 +40,11 @@ static inline void generate_chunk(
 
             // Generate height using noise
             float height_noise = fnlGetNoise2D(&noise, (int)global_x, (int)global_z);
-            int height = (int)(height_noise * 20.0f); // Adjust height scale and offset
+            
+
+            float ridge = 1.0 + ((1.0 + -1 * (fabsf(height_noise) / 1.0)) * -1.0);
+            
+            int height = (int)(ridge * 40.0f) - 25; // Adjust height scale and offset
 
             for (int y = 0; y < CHUNK_SIZE; ++y) {
                 int global_y = base_y + y;
@@ -52,7 +56,7 @@ static inline void generate_chunk(
                 } else {
                     chunk->blocks[block_idx].type = AIR;
                 }
-                if (global_y < 14){chunk->blocks[block_idx].type = WATER;}
+                if (global_y == 0){chunk->blocks[block_idx].type = WATER;}
             }
         }
     }
@@ -134,26 +138,56 @@ static inline void wrap_coordinates(
 
 static void add_cubes_to_list(
     vec3int** list, 
-    int* count, 
-    int* capacity,
+    size_t* count,  // Changed to size_t
+    size_t* capacity,  // Changed to size_t
     int x_start, int x_end,
     int y_start, int y_end,
     int z_start, int z_end
 ) {
-    const int needed = (x_end - x_start + 1) * 
-                      (y_end - y_start + 1) * 
-                      (z_end - z_start + 1);
+    const size_t needed = (size_t)(x_end - x_start + 1) * 
+                         (size_t)(y_end - y_start + 1) * 
+                         (size_t)(z_end - z_start + 1);
     
     if (*count + needed > *capacity) {
-        *capacity = (*capacity == 0) ? needed : *capacity * 2;
-        *list = realloc(*list, *capacity * sizeof(vec3int));
+        // Handle overflow-safe capacity calculation
+        size_t new_capacity;
+        if (*capacity == 0) {
+            new_capacity = needed;
+        } else {
+            // Check for overflow before doubling
+            if (*capacity > SIZE_MAX / 2) {
+                fprintf(stderr, "Capacity overflow detected\n");
+                exit(EXIT_FAILURE);
+            }
+            new_capacity = *capacity * 2;
+        }
+
+        // Ensure we have enough space
+        if (needed > SIZE_MAX - *count || new_capacity < *count + needed) {
+            new_capacity = *count + needed;
+        }
+
+        // Check for allocation size overflow
+        if (new_capacity > SIZE_MAX / sizeof(vec3int)) {
+            fprintf(stderr, "Allocation size too large\n");
+            exit(EXIT_FAILURE);
+        }
+
+        vec3int* new_list = realloc(*list, new_capacity * sizeof(vec3int));
+        if (!new_list) {
+            perror("realloc failed");
+            exit(EXIT_FAILURE);
+        }
+        *list = new_list;
+        *capacity = new_capacity;
     }
     
+    // Add cubes to the list
     for (int x = x_start; x <= x_end; x++) {
         for (int y = y_start; y <= y_end; y++) {
             for (int z = z_start; z <= z_end; z++) {
                 (*list)[*count] = (vec3int){x, y, z};
-                (*count) += 1;
+                (*count)++;
             }
         }
     }
@@ -166,32 +200,32 @@ static void get_entered_exited_cubes(
     vec3int start_center,
     vec3int end_center,
     int render_distance,
-    vec3int** entered, int* entered_count,
-    vec3int** exited, int* exited_count
+    vec3int** entered, size_t* entered_count,
+    vec3int** exited, size_t* exited_count
 ) {
     // Initialize outputs
     *entered = NULL;
     *exited = NULL;
     *entered_count = 0;
     *exited_count = 0;
-    int entered_cap = 0;
-    int exited_cap = 0;
+    size_t entered_cap = 0;
+    size_t exited_cap = 0;
     
     // Calculate boundaries for start cube
-    int s_min_x = start_center.x - render_distance;
-    int s_max_x = start_center.x + render_distance;
+    int s_min_x = start_center.x - MIN(render_distance, (WORLD_X-1)/2);
+    int s_max_x = start_center.x + MIN(render_distance, (WORLD_X-1)/2);
     int s_min_y = start_center.y - render_distance;
     int s_max_y = start_center.y + render_distance;
-    int s_min_z = start_center.z - render_distance;
-    int s_max_z = start_center.z + render_distance;
+    int s_min_z = start_center.z - MIN(render_distance, (WORLD_Z-1)/2);
+    int s_max_z = start_center.z + MIN(render_distance, (WORLD_Z-1)/2);
     
     // Calculate boundaries for end cube
-    int e_min_x = end_center.x - render_distance;
-    int e_max_x = end_center.x + render_distance;
+    int e_min_x = end_center.x - MIN(render_distance, (WORLD_X-1)/2);
+    int e_max_x = end_center.x + MIN(render_distance, (WORLD_X-1)/2);
     int e_min_y = end_center.y - render_distance;
     int e_max_y = end_center.y + render_distance;
-    int e_min_z = end_center.z - render_distance;
-    int e_max_z = end_center.z + render_distance;
+    int e_min_z = end_center.z - MIN(render_distance, (WORLD_Z-1)/2);
+    int e_max_z = end_center.z + MIN(render_distance, (WORLD_Z-1)/2);
     
     // Calculate EXITED cubes (in start but not in end)
     // Left face (X-min)
@@ -320,16 +354,15 @@ void update_nearby_chunks(
     // Calculate entered/exited chunks
     vec3int* entered = NULL;
     vec3int* exited = NULL;
-    int entered_count = 0;
-    int exited_count = 0;
+    size_t entered_count = 0;
+    size_t exited_count = 0;
     
     get_entered_exited_cubes(
         *previous_chunk_center,
         current_center,
         render_distance,
         &entered, &entered_count,
-        &exited, &exited_count
-    );
+        &exited, &exited_count);
     
     // Update previous center
     *previous_chunk_center = current_center;
@@ -350,10 +383,10 @@ void update_nearby_chunks(
     PROFILE_END(Remove_chunks);
     // Process entered chunks
     PROFILE_BEGIN(Add_chunks);
-    printf("%d\n", entered_count);
-    printf("%d\n", exited_count);
+    printf("%zu\n", entered_count);
+    printf("%zu\n", exited_count);
     for (int i = 0; i < entered_count; i++) {
-        if (exited[i].y != ((exited[i].y % world_y + world_y) % world_y)){continue;}
+        if (entered[i].y != ((entered[i].y % world_y + world_y) % world_y)){continue;}
         vec3int wrapped = entered[i];
         wrap_coordinates(world_x, world_y, world_z, 
                         &wrapped.x, &wrapped.y, &wrapped.z);
@@ -370,7 +403,7 @@ void update_nearby_chunks(
     PROFILE_END(Add_chunks);
 
     // Clean up
-    free(exited);
     free(entered);
+    free(exited);
     PROFILE_END(update_nearby_chunks);
 }
