@@ -15,10 +15,12 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#define CLAMP(x, lower, upper) ((x) < (lower) ? (lower) : ((x) > (upper) ? (upper) : (x)))
+
 static inline void generate_chunk(
     Chunk* chunk
 ){
-
+    
 
     memset(chunk->blocks, AIR, CHUNK_VOLUME * sizeof(enum Blocktype));
 
@@ -132,8 +134,9 @@ static inline void wrap_coordinates(
     int* z
 ) {
     *x = (*x % world_x + world_x) % world_x;
-    *y = *y;
     *z = (*z % world_z + world_z) % world_z;
+
+    *y = CLAMP(*y, 0, world_y - 1);
 }
 
 static void add_cubes_to_list(
@@ -210,22 +213,40 @@ static void get_entered_exited_cubes(
     *exited_count = 0;
     size_t entered_cap = 0;
     size_t exited_cap = 0;
+
+    int lod = 2;
+
+    bool xfucked = (WORLD_X % lod != 0);
+    bool zfucked = (WORLD_X % lod != 0);
+
+    // Calculate safe render distances (clamped to half world size)
+    const int safe_render_x = MIN(render_distance, (WORLD_X - 1) / 2);
+    const int safe_render_z = MIN(render_distance, (WORLD_Z - 1) / 2);
+    const int safe_render_y = render_distance;
+
+    int s_min_x = start_center.x - safe_render_x;
+    int s_max_x = start_center.x + safe_render_x;
+    int s_min_y = start_center.y - safe_render_y;
+    int s_max_y = start_center.y + safe_render_y;
+    int s_min_z = start_center.z - safe_render_z;
+    int s_max_z = start_center.z + safe_render_z;
     
-    // Calculate boundaries for start cube
-    int s_min_x = start_center.x - MIN(render_distance, (WORLD_X-1)/2);
-    int s_max_x = start_center.x + MIN(render_distance, (WORLD_X-1)/2);
-    int s_min_y = start_center.y - render_distance;
-    int s_max_y = start_center.y + render_distance;
-    int s_min_z = start_center.z - MIN(render_distance, (WORLD_Z-1)/2);
-    int s_max_z = start_center.z + MIN(render_distance, (WORLD_Z-1)/2);
-    
-    // Calculate boundaries for end cube
-    int e_min_x = end_center.x - MIN(render_distance, (WORLD_X-1)/2);
-    int e_max_x = end_center.x + MIN(render_distance, (WORLD_X-1)/2);
-    int e_min_y = end_center.y - render_distance;
-    int e_max_y = end_center.y + render_distance;
-    int e_min_z = end_center.z - MIN(render_distance, (WORLD_Z-1)/2);
-    int e_max_z = end_center.z + MIN(render_distance, (WORLD_Z-1)/2);
+    int e_min_x = end_center.x - safe_render_x;
+    int e_max_x = end_center.x + safe_render_x;
+    int e_min_y = end_center.y - safe_render_y;
+    int e_max_y = end_center.y + safe_render_y;
+    int e_min_z = end_center.z - safe_render_z;
+    int e_max_z = end_center.z + safe_render_z;
+
+    if (xfucked){
+
+    } 
+    if (zfucked){
+
+
+    } 
+
+
     
     // Calculate EXITED cubes (in start but not in end)
     // Left face (X-min)
@@ -341,14 +362,14 @@ void update_nearby_chunks(
     const int player_chunk_y = (int)floor(position[1]) / CHUNK_SIZE;
     const int player_chunk_z = (int)floor(position[2]) / CHUNK_SIZE;
     const vec3int current_center = {player_chunk_x, player_chunk_y, player_chunk_z};
-
+    
     // Return if center hasn't changed
     if (previous_chunk_center->x == current_center.x &&
         previous_chunk_center->y == current_center.y &&
         previous_chunk_center->z == current_center.z) {
         return;
     }
-
+    
     PROFILE_BEGIN(update_nearby_chunks);
     
     // Calculate entered/exited chunks

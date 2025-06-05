@@ -92,9 +92,9 @@ constexpr int CHUNK_VOLUME_P = CHUNK_SIZE_P * CHUNK_SIZE_P * CHUNK_SIZE_P;
 
 //TODO, move this to the planets struct so we can get more planets
 // X and Y must be odd due to some chunk detection glitch? otherwise the Other side of the torus final chunk doesnt render
-const int WORLD_X = 201;
-const int WORLD_Y = 5;
-const int WORLD_Z = 51;
+const int WORLD_X = 400;
+const int WORLD_Y = 1;
+const int WORLD_Z = 30;
 
 
 
