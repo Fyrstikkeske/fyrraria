@@ -17,56 +17,12 @@
 
 #define CLAMP(x, lower, upper) ((x) < (lower) ? (lower) : ((x) > (upper) ? (upper) : (x)))
 
-static inline void generate_chunk(
-    Chunk* chunk
-){
-    
 
-    memset(chunk->blocks, AIR, CHUNK_VOLUME * sizeof(enum Blocktype));
-
-    // Generate terrain features
-    const int base_x = chunk->Key.x * CHUNK_SIZE;
-    const int base_y = chunk->Key.y * CHUNK_SIZE;
-    const int base_z = chunk->Key.z * CHUNK_SIZE;
-
-    // Configure noise generator
-    fnl_state noise = fnlCreateState();
-    noise.seed = 1337;
-    noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
-    noise.frequency = 0.01;
-
-    for (int x = 0; x < CHUNK_SIZE; ++x) {
-        for (int z = 0; z < CHUNK_SIZE; ++z) {
-            int global_x = base_x + x;
-            int global_z = base_z + z;
-
-            // Generate height using noise
-            float height_noise = fnlGetNoise2D(&noise, (int)global_x, (int)global_z);
-            
-
-            float ridge = 1.0 + ((1.0 + -1 * (fabsf(height_noise) / 1.0)) * -1.0);
-            
-            int height = (int)(ridge * 40.0f) - 25; // Adjust height scale and offset
-
-            for (int y = 0; y < CHUNK_SIZE; ++y) {
-                int global_y = base_y + y;
-
-                int block_idx = x + CHUNK_SIZE * (y + CHUNK_SIZE * z);
-
-                if (global_y <= height) {
-                    chunk->blocks[block_idx].type = GRASS;
-                } else {
-                    chunk->blocks[block_idx].type = AIR;
-                }
-                if (global_y == 0){chunk->blocks[block_idx].type = WATER;}
-            }
-        }
-    }
-}
 
 
 Chunk* chunk_add(Chunk** planet, const vec3int* key, const uint64_t* texture_handles) {
     Chunk* chunk = malloc(sizeof(Chunk));
+
     if (!chunk) {
         fprintf(stderr, "Memory allocation failed for chunk!\n");
         exit(EXIT_FAILURE);
@@ -78,7 +34,9 @@ Chunk* chunk_add(Chunk** planet, const vec3int* key, const uint64_t* texture_han
 
     
     generate_chunk(chunk);
-    
+
+
+
     generate_mesh_for_chunk(chunk, texture_handles);
 
     HASH_ADD(hh, *planet, Key, sizeof(vec3int), chunk);
@@ -199,6 +157,7 @@ static void add_cubes_to_list(
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
+
 static void get_entered_exited_cubes(
     vec3int start_center,
     vec3int end_center,
@@ -214,41 +173,33 @@ static void get_entered_exited_cubes(
     size_t entered_cap = 0;
     size_t exited_cap = 0;
 
-    int lod = 2;
-
-    bool xfucked = (WORLD_X % lod != 0);
-    bool zfucked = (WORLD_X % lod != 0);
-
-    // Calculate safe render distances (clamped to half world size)
-    const int safe_render_x = MIN(render_distance, (WORLD_X - 1) / 2);
-    const int safe_render_z = MIN(render_distance, (WORLD_Z - 1) / 2);
+    // Precompute safe render distances
+    const int safe_render_x = MIN(render_distance, (WORLD_X - 1)/ 2);
+    const int safe_render_z = MIN(render_distance, (WORLD_Z - 1)/ 2);
     const int safe_render_y = render_distance;
 
-    int s_min_x = start_center.x - safe_render_x;
-    int s_max_x = start_center.x + safe_render_x;
-    int s_min_y = start_center.y - safe_render_y;
-    int s_max_y = start_center.y + safe_render_y;
-    int s_min_z = start_center.z - safe_render_z;
-    int s_max_z = start_center.z + safe_render_z;
-    
-    int e_min_x = end_center.x - safe_render_x;
-    int e_max_x = end_center.x + safe_render_x;
-    int e_min_y = end_center.y - safe_render_y;
-    int e_max_y = end_center.y + safe_render_y;
-    int e_min_z = end_center.z - safe_render_z;
-    int e_max_z = end_center.z + safe_render_z;
+    // Precompute boundaries with simplified expressions
+    const int s_min_x = start_center.x - safe_render_x;
+    const int s_max_x = start_center.x + safe_render_x;
+    const int s_min_y = start_center.y - safe_render_y;
+    const int s_max_y = start_center.y + safe_render_y;
+    const int s_min_z = start_center.z - safe_render_z;
+    const int s_max_z = start_center.z + safe_render_z;
 
-    if (xfucked){
+    const int e_min_x = end_center.x - safe_render_x;
+    const int e_max_x = end_center.x + safe_render_x;
+    const int e_min_y = end_center.y - safe_render_y;
+    const int e_max_y = end_center.y + safe_render_y;
+    const int e_min_z = end_center.z - safe_render_z;
+    const int e_max_z = end_center.z + safe_render_z;
 
-    } 
-    if (zfucked){
+    // Precompute overlapping regions for Y/Z faces
+    const int overlap_x_min = MAX(s_min_x, e_min_x);
+    const int overlap_x_max = MIN(s_max_x, e_max_x);
+    const int overlap_y_min = MAX(s_min_y, e_min_y);
+    const int overlap_y_max = MIN(s_max_y, e_max_y);
 
-
-    } 
-
-
-    
-    // Calculate EXITED cubes (in start but not in end)
+    // EXITED cubes (in start but not in end)
     // Left face (X-min)
     if (s_min_x < e_min_x) {
         add_cubes_to_list(exited, exited_count, &exited_cap,
@@ -256,7 +207,6 @@ static void get_entered_exited_cubes(
             s_min_y, s_max_y,
             s_min_z, s_max_z);
     }
-    
     // Right face (X-max)
     if (s_max_x > e_max_x) {
         add_cubes_to_list(exited, exited_count, &exited_cap,
@@ -264,40 +214,36 @@ static void get_entered_exited_cubes(
             s_min_y, s_max_y,
             s_min_z, s_max_z);
     }
-    
     // Front face (Y-min)
     if (s_min_y < e_min_y) {
         add_cubes_to_list(exited, exited_count, &exited_cap,
-            MAX(s_min_x, e_min_x), MIN(s_max_x, e_max_x),
+            overlap_x_min, overlap_x_max,
             s_min_y, MIN(s_max_y, e_min_y - 1),
             s_min_z, s_max_z);
     }
-    
     // Back face (Y-max)
     if (s_max_y > e_max_y) {
         add_cubes_to_list(exited, exited_count, &exited_cap,
-            MAX(s_min_x, e_min_x), MIN(s_max_x, e_max_x),
+            overlap_x_min, overlap_x_max,
             MAX(s_min_y, e_max_y + 1), s_max_y,
             s_min_z, s_max_z);
     }
-    
     // Bottom face (Z-min)
     if (s_min_z < e_min_z) {
         add_cubes_to_list(exited, exited_count, &exited_cap,
-            MAX(s_min_x, e_min_x), MIN(s_max_x, e_max_x),
-            MAX(s_min_y, e_min_y), MIN(s_max_y, e_max_y),
+            overlap_x_min, overlap_x_max,
+            overlap_y_min, overlap_y_max,
             s_min_z, MIN(s_max_z, e_min_z - 1));
     }
-    
     // Top face (Z-max)
     if (s_max_z > e_max_z) {
         add_cubes_to_list(exited, exited_count, &exited_cap,
-            MAX(s_min_x, e_min_x), MIN(s_max_x, e_max_x),
-            MAX(s_min_y, e_min_y), MIN(s_max_y, e_max_y),
+            overlap_x_min, overlap_x_max,
+            overlap_y_min, overlap_y_max,
             MAX(s_min_z, e_max_z + 1), s_max_z);
     }
-    
-    // Calculate ENTERED cubes (in end but not in start)
+
+    // ENTERED cubes (in end but not in start)
     // Left face (X-min)
     if (e_min_x < s_min_x) {
         add_cubes_to_list(entered, entered_count, &entered_cap,
@@ -305,7 +251,6 @@ static void get_entered_exited_cubes(
             e_min_y, e_max_y,
             e_min_z, e_max_z);
     }
-    
     // Right face (X-max)
     if (e_max_x > s_max_x) {
         add_cubes_to_list(entered, entered_count, &entered_cap,
@@ -313,36 +258,32 @@ static void get_entered_exited_cubes(
             e_min_y, e_max_y,
             e_min_z, e_max_z);
     }
-    
     // Front face (Y-min)
     if (e_min_y < s_min_y) {
         add_cubes_to_list(entered, entered_count, &entered_cap,
-            MAX(e_min_x, s_min_x), MIN(e_max_x, s_max_x),
+            overlap_x_min, overlap_x_max,
             e_min_y, MIN(e_max_y, s_min_y - 1),
             e_min_z, e_max_z);
     }
-    
     // Back face (Y-max)
     if (e_max_y > s_max_y) {
         add_cubes_to_list(entered, entered_count, &entered_cap,
-            MAX(e_min_x, s_min_x), MIN(e_max_x, s_max_x),
+            overlap_x_min, overlap_x_max,
             MAX(e_min_y, s_max_y + 1), e_max_y,
             e_min_z, e_max_z);
     }
-    
     // Bottom face (Z-min)
     if (e_min_z < s_min_z) {
         add_cubes_to_list(entered, entered_count, &entered_cap,
-            MAX(e_min_x, s_min_x), MIN(e_max_x, s_max_x),
-            MAX(e_min_y, s_min_y), MIN(e_max_y, s_max_y),
+            overlap_x_min, overlap_x_max,
+            overlap_y_min, overlap_y_max,
             e_min_z, MIN(e_max_z, s_min_z - 1));
     }
-    
     // Top face (Z-max)
     if (e_max_z > s_max_z) {
         add_cubes_to_list(entered, entered_count, &entered_cap,
-            MAX(e_min_x, s_min_x), MIN(e_max_x, s_max_x),
-            MAX(e_min_y, s_min_y), MIN(e_max_y, s_max_y),
+            overlap_x_min, overlap_x_max,
+            overlap_y_min, overlap_y_max,
             MAX(e_min_z, s_max_z + 1), e_max_z);
     }
 }
@@ -391,7 +332,8 @@ void update_nearby_chunks(
     // Process exited chunks
     PROFILE_BEGIN(Remove_chunks);
     for (int i = 0; i < exited_count; i++) {
-        if (exited[i].y != ((exited[i].y % world_y + world_y) % world_y)){continue;}
+        if (exited[i].y < 0 || exited[i].y > world_y){continue;}
+
         vec3int wrapped = exited[i];
         wrap_coordinates(world_x, world_y, world_z, 
                         &wrapped.x, &wrapped.y, &wrapped.z);
@@ -407,7 +349,7 @@ void update_nearby_chunks(
     printf("%zu\n", entered_count);
     printf("%zu\n", exited_count);
     for (int i = 0; i < entered_count; i++) {
-        if (entered[i].y != ((entered[i].y % world_y + world_y) % world_y)){continue;}
+        if (entered[i].y < 0 || entered[i].y > world_y){continue;}
         vec3int wrapped = entered[i];
         wrap_coordinates(world_x, world_y, world_z, 
                         &wrapped.x, &wrapped.y, &wrapped.z);
