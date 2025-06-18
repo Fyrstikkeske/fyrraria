@@ -9,7 +9,9 @@ If the render distance is larger than world x or z, it will cause chunks to diss
 
 - embed images, currently only embeds shaders
 
-- make the binary mesher handle cases outside of itself. Regenerate chunks next to a chunk addition and deletion
+- make the binary mesher handle cases outside of itself. Regenerate chunks next to a chunk addition and deletion (somewhat done now)
+
+- LODS
 
 ## research todo
 
@@ -53,4 +55,4 @@ RGFW: Decent
 
 3/6-25: YAAAAA, OKOKOk, things i did last couple of days. Made the worldgen know which chunks to update and remove without iterating through the whole thing. Secondly, TANTANS BINARY FACE CULLING. thanks to theese things i dont even need to multithread world gen until like 10-15 render distance. (its still smart though thanks to perlin noise)
 
-19/6-25: yo im back biaches, finally made the checkrenderablechunksthingy allow for a not thingy within. basically, LODS ARE SOON READY(I hope.plsplsplspls) i dont want to fucking do lod anymore and just optimise the gpu now, it would be so nice. there are some schizo ideas(vertex pulling) basically 32 or maybe even 16 bits per face.
+19/6-25: yo im back biaches, finally made the checkrenderablechunksthingy allow for a not thingy within. basically, LODS ARE SOON READY(I hope.plsplsplspls) i dont want to fucking do lod anymore and just optimise the gpu now, it would be so nice. there are some schizo ideas(vertex pulling) basically 32 or maybe even 16 bits per face. addendum. CHUNKS DONT RENDER NEARBOR CHUNK PARTS IF NOT NEEDED!!! like 1.5x fps somehow
