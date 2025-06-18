@@ -7,6 +7,7 @@
 #include <cglm/cglm.h>
 #include <gl.h>
 #include <RGFW.h>
+#include <uchar.h>
 #include "uthash.h"
 
 #define GLAD_GL_IMPLEMENTATION
@@ -16,8 +17,6 @@
 #endif
 
 
-#define _POSIX_C_SOURCE 199309L
-#define _DEFAULT_SOURCE
 
 
 
@@ -92,11 +91,12 @@ constexpr int CHUNK_VOLUME_P = CHUNK_SIZE_P * CHUNK_SIZE_P * CHUNK_SIZE_P;
 
 //TODO, move this to the planets struct so we can get more planets
 // X and Y must be odd due to some chunk detection glitch? otherwise the Other side of the torus final chunk doesnt render
-const int WORLD_X = 300;
+const int WORLD_X = 100;
 const int WORLD_Y = 1;
-const int WORLD_Z = 100;
+const int WORLD_Z = 30;
 
-
+#define CLAMP(x, lower, upper) ((x) < (lower) ? (lower) : ((x) > (upper) ? (upper) : (x)))
+#define EUCLID_MODULO(x, modulo) ((x % modulo + modulo) % modulo)
 
 struct shaderstruct{
     int shaderProgram;
@@ -132,6 +132,7 @@ typedef struct {
     int vertices;
     bool is_active;
     UT_hash_handle hh;
+    char8_t lod;
 } Chunk;
 
 static inline void transform_to_global_position(
@@ -176,8 +177,9 @@ static inline void analytical_torus_normal(vec3 input, vec3 dest, int Worldx, in
 }
 static inline void handle_movement(RGFW_window* win, vec3 cameraFrontLocal, vec3 playerpos){
     float horizontalSpeed;
+    //why us this a warning in the ide, it compiles. fuck this
     if (RGFW_isPressed(win, RGFW_controlL)) {
-        horizontalSpeed = 100;
+        horizontalSpeed = 32.0;
     }else {
         horizontalSpeed = 0.1;
     }

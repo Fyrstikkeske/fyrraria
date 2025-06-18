@@ -2,13 +2,15 @@
 
 #include "utils.h"
 #include "worldgen.h"
+#include <math.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 constexpr int vertexSize = 3+2+1+1;
 
 constexpr int faceSize = vertexSize * 6;
 
+
+//should be in worldgen.h but screw that due to circular dependencies. fuck this shit
 static inline void generate_chunk(
   Chunk* chunk
 ){
@@ -38,7 +40,7 @@ static inline void generate_chunk(
 
           float ridge = 1.0 + ((1.0 + -1 * (fabsf(height_noise) / 1.0)) * -1.0);
           
-          int height = (int)(ridge * 10.0f) - 6; // Adjust height scale and offset
+          int height = (int)(ridge * 20.0f) - 12; // Adjust height scale and offset
 
           for (int y = 0; y < CHUNK_SIZE; ++y) {
               int global_y = base_y + y;
@@ -72,71 +74,71 @@ static inline void generate_chunk(
 
 static inline void generate_face_vertices(float* buffer, int offset, int axis, 
     int globalx, int globaly, int globalz,
-    float floatLo, float floatHi) {
+    float floatLo, float floatHi, char lod) {
 float face[faceSize];
-
+    float thelod = pow(2, lod);
 switch (axis) {
 case 0: // +Y
 memcpy(face, (float[]){
-  globalx + 0.0f, globaly + 0.0f, globalz + 0.0f, 0.0f, 1.0f, floatLo, floatHi,
-  globalx + 0.0f, globaly + 0.0f, globalz + 1.0f, 0.0f, 0.0f, floatLo, floatHi,
-  globalx + 1.0f, globaly + 0.0f, globalz + 1.0f, 1.0f, 0.0f, floatLo, floatHi,
-  globalx + 1.0f, globaly + 0.0f, globalz + 1.0f, 1.0f, 0.0f, floatLo, floatHi,
-  globalx + 1.0f, globaly + 0.0f, globalz + 0.0f, 1.0f, 1.0f, floatLo, floatHi,
-  globalx + 0.0f, globaly + 0.0f, globalz + 0.0f, 0.0f, 1.0f, floatLo, floatHi
+  globalx + 0.0f, globaly + 0.0f, globalz + 0.0f, 0.0f, thelod, floatLo, floatHi,
+  globalx + 0.0f, globaly + 0.0f, globalz + thelod, 0.0f, 0.0f, floatLo, floatHi,
+  globalx + thelod, globaly + 0.0f, globalz + thelod, thelod, 0.0f, floatLo, floatHi,
+  globalx + thelod, globaly + 0.0f, globalz + thelod, thelod, 0.0f, floatLo, floatHi,
+  globalx + thelod, globaly + 0.0f, globalz + 0.0f, thelod, thelod, floatLo, floatHi,
+  globalx + 0.0f, globaly + 0.0f, globalz + 0.0f, 0.0f, thelod, floatLo, floatHi
 }, sizeof(face));
 break;
 case 1: // -Y (fixed winding order)
 memcpy(face, (float[]){
-  globalx + 0.0f, globaly + 1.0f, globalz + 0.0f, 0.0f, 1.0f, floatLo, floatHi,
-globalx + 1.0f, globaly + 1.0f, globalz + 0.0f, 1.0f, 1.0f, floatLo, floatHi,
-globalx + 1.0f, globaly + 1.0f, globalz + 1.0f, 1.0f, 0.0f, floatLo, floatHi,
-globalx + 1.0f, globaly + 1.0f, globalz + 1.0f, 1.0f, 0.0f, floatLo, floatHi,
-globalx + 0.0f, globaly + 1.0f, globalz + 1.0f, 0.0f, 0.0f, floatLo, floatHi,
-globalx + 0.0f, globaly + 1.0f, globalz + 0.0f, 0.0f, 1.0f, floatLo, floatHi
+  globalx + 0.0f, globaly + thelod, globalz + 0.0f, 0.0f, thelod, floatLo, floatHi,
+globalx + thelod, globaly + thelod, globalz + 0.0f, thelod, thelod, floatLo, floatHi,
+globalx + thelod, globaly + thelod, globalz + thelod, thelod, 0.0f, floatLo, floatHi,
+globalx + thelod, globaly + thelod, globalz + thelod, thelod, 0.0f, floatLo, floatHi,
+globalx + 0.0f, globaly + thelod, globalz + thelod, 0.0f, 0.0f, floatLo, floatHi,
+globalx + 0.0f, globaly + thelod, globalz + 0.0f, 0.0f, thelod, floatLo, floatHi
 
 }, sizeof(face));
 break;
 case 2: // +X (fixed texture coords)
 memcpy(face, (float[]){
-  globalx + 0.0f, globaly + 1.0f, globalz + 1.0f, 0.0f, 0.0f, floatLo, floatHi,
-  globalx + 0.0f, globaly + 0.0f, globalz + 1.0f, 0.0f, 1.0f, floatLo, floatHi,
-  globalx + 0.0f, globaly + 1.0f, globalz + 0.0f, 1.0f, 0.0f, floatLo, floatHi,
-  globalx + 0.0f, globaly + 0.0f, globalz + 0.0f, 1.0f, 1.0f, floatLo, floatHi,
-  globalx + 0.0f, globaly + 1.0f, globalz + 0.0f, 1.0f, 0.0f, floatLo, floatHi,
-  globalx + 0.0f, globaly + 0.0f, globalz + 1.0f, 0.0f, 1.0f, floatLo, floatHi
+  globalx + 0.0f, globaly + thelod, globalz + thelod, 0.0f, 0.0f, floatLo, floatHi,
+  globalx + 0.0f, globaly + 0.0f, globalz + thelod, 0.0f, thelod, floatLo, floatHi,
+  globalx + 0.0f, globaly + thelod, globalz + 0.0f, thelod, 0.0f, floatLo, floatHi,
+  globalx + 0.0f, globaly + 0.0f, globalz + 0.0f, thelod, thelod, floatLo, floatHi,
+  globalx + 0.0f, globaly + thelod, globalz + 0.0f, thelod, 0.0f, floatLo, floatHi,
+  globalx + 0.0f, globaly + 0.0f, globalz + thelod, 0.0f, thelod, floatLo, floatHi
 }, sizeof(face));
 break;
 case 3: // -X (fixed vertex/texture coords)
 memcpy(face, (float[]){
-globalx + 1.0f, globaly + 1.0f, globalz + 0.0f, 0.0f, 0.0f, floatLo, floatHi,
-globalx + 1.0f, globaly + 0.0f, globalz + 0.0f, 0.0f, 1.0f, floatLo, floatHi,
-globalx + 1.0f, globaly + 1.0f, globalz + 1.0f, 1.0f, 0.0f, floatLo, floatHi,
-globalx + 1.0f, globaly + 0.0f, globalz + 1.0f, 1.0f, 1.0f, floatLo, floatHi,
-globalx + 1.0f, globaly + 1.0f, globalz + 1.0f, 1.0f, 0.0f, floatLo, floatHi,
-globalx + 1.0f, globaly + 0.0f, globalz + 0.0f, 0.0f, 1.0f, floatLo, floatHi
+globalx + thelod, globaly + thelod, globalz + 0.0f, 0.0f, 0.0f, floatLo, floatHi,
+globalx + thelod, globaly + 0.0f, globalz + 0.0f, 0.0f, thelod, floatLo, floatHi,
+globalx + thelod, globaly + thelod, globalz + thelod, thelod, 0.0f, floatLo, floatHi,
+globalx + thelod, globaly + 0.0f, globalz + thelod, thelod, thelod, floatLo, floatHi,
+globalx + thelod, globaly + thelod, globalz + thelod, thelod, 0.0f, floatLo, floatHi,
+globalx + thelod, globaly + 0.0f, globalz + 0.0f, 0.0f, thelod, floatLo, floatHi
 }, sizeof(face));
 break;
 case 4: // +Z (fixed vertex/texture coords)
 memcpy(face, (float[]){
   
-  globalx + 0.0f, globaly + 0.0f, globalz + 0.0f, 0.0f, 1.0f, floatLo, floatHi,
-  globalx + 1.0f, globaly + 0.0f, globalz + 0.0f, 1.0f, 1.0f, floatLo, floatHi,
-  globalx + 1.0f, globaly + 1.0f, globalz + 0.0f, 1.0f, 0.0f, floatLo, floatHi,
+  globalx + 0.0f, globaly + 0.0f, globalz + 0.0f, 0.0f, thelod, floatLo, floatHi,
+  globalx + thelod, globaly + 0.0f, globalz + 0.0f, thelod, thelod, floatLo, floatHi,
+  globalx + thelod, globaly + thelod, globalz + 0.0f, thelod, 0.0f, floatLo, floatHi,
   
-  globalx + 1.0f, globaly + 1.0f, globalz + 0.0f, 1.0f, 0.0f, floatLo, floatHi,
-  globalx + 0.0f, globaly + 1.0f, globalz + 0.0f, 0.0f, 0.0f, floatLo, floatHi,
-  globalx + 0.0f, globaly + 0.0f, globalz + 0.0f, 0.0f, 1.0f, floatLo, floatHi
+  globalx + thelod, globaly + thelod, globalz + 0.0f, thelod, 0.0f, floatLo, floatHi,
+  globalx + 0.0f, globaly + thelod, globalz + 0.0f, 0.0f, 0.0f, floatLo, floatHi,
+  globalx + 0.0f, globaly + 0.0f, globalz + 0.0f, 0.0f, thelod, floatLo, floatHi
 }, sizeof(face));
 break;
 case 5: // -Z (fixed texture coords)
 memcpy(face, (float[]){
-  globalx + 0.0f, globaly + 0.0f, globalz + 1.0f, 0.0f, 1.0f, floatLo, floatHi,
-  globalx + 0.0f, globaly + 1.0f, globalz + 1.0f, 0.0f, 0.0f, floatLo, floatHi,
-  globalx + 1.0f, globaly + 1.0f, globalz + 1.0f, 1.0f, 0.0f, floatLo, floatHi,
-  globalx + 1.0f, globaly + 1.0f, globalz + 1.0f, 1.0f, 0.0f, floatLo, floatHi,
-  globalx + 1.0f, globaly + 0.0f, globalz + 1.0f, 1.0f, 1.0f, floatLo, floatHi,
-  globalx + 0.0f, globaly + 0.0f, globalz + 1.0f, 0.0f, 1.0f, floatLo, floatHi
+  globalx + 0.0f, globaly + 0.0f, globalz + thelod, 0.0f, thelod, floatLo, floatHi,
+  globalx + 0.0f, globaly + thelod, globalz + thelod, 0.0f, 0.0f, floatLo, floatHi,
+  globalx + thelod, globaly + thelod, globalz + thelod, thelod, 0.0f, floatLo, floatHi,
+  globalx + thelod, globaly + thelod, globalz + thelod, thelod, 0.0f, floatLo, floatHi,
+  globalx + thelod, globaly + 0.0f, globalz + thelod, thelod, thelod, floatLo, floatHi,
+  globalx + 0.0f, globaly + 0.0f, globalz + thelod, 0.0f, thelod, floatLo, floatHi
 }, sizeof(face));
 break;
 }
@@ -144,44 +146,47 @@ break;
 memcpy(&buffer[offset], face, sizeof(face));
 }
 
+
+
 static inline void generate_mesh_for_chunk(
 Chunk *chunk,
 const uint64_t* handles
 ) {
 
+  //this stinks
   Chunk chunkup;
   chunkup.Key.x = chunk->Key.x;
   chunkup.Key.z = chunk->Key.z;
-  chunkup.Key.y = chunk->Key.y + 1;
+  chunkup.Key.y = CLAMP(chunk->Key.y + 1, 0, WORLD_Y);
   generate_chunk(&chunkup);
   Chunk chunkdown;
   chunkdown.Key.x = chunk->Key.x;
   chunkdown.Key.z = chunk->Key.z;
-  chunkdown.Key.y = chunk->Key.y - 1;
+  chunkdown.Key.y = CLAMP(chunk->Key.y - 1, 0, WORLD_Y);
   generate_chunk(&chunkdown);
   Chunk chunknorth;
   chunknorth.Key.x = chunk->Key.x;
-  chunknorth.Key.z = chunk->Key.z + 1;
+  chunknorth.Key.z = EUCLID_MODULO(chunk->Key.z + 1, WORLD_Z);
   chunknorth.Key.y = chunk->Key.y;
   generate_chunk(&chunknorth);
   Chunk chunksouth;
   chunksouth.Key.x = chunk->Key.x;
-  chunksouth.Key.z = chunk->Key.z - 1;
+  chunksouth.Key.z = EUCLID_MODULO(chunk->Key.z - 1, WORLD_Z);
   chunksouth.Key.y = chunk->Key.y;
   generate_chunk(&chunksouth);
   Chunk chunkwest;
-  chunkwest.Key.x = chunk->Key.x - 1;
+  chunkwest.Key.x = EUCLID_MODULO(chunk->Key.x - 1, WORLD_X);
   chunkwest.Key.z = chunk->Key.z;
   chunkwest.Key.y = chunk->Key.y;
   generate_chunk(&chunkwest);
   Chunk chunkeast;
-  chunkeast.Key.x = chunk->Key.x + 1;
+  chunkeast.Key.x = EUCLID_MODULO(chunk->Key.x + 1, WORLD_X);
   chunkeast.Key.z = chunk->Key.z;
   chunkeast.Key.y = chunk->Key.y;
   generate_chunk(&chunkeast);
   
 
-  struct block padded_chunk_blocks[CHUNK_VOLUME_P] = {0}; // Initialize with air
+  struct block padded_chunk_blocks[CHUNK_VOLUME_P] = {0};
 
     for (int iter = 0; iter < CHUNK_VOLUME_P; iter++) {
         const int x = iter % CHUNK_SIZE_P;
@@ -355,9 +360,9 @@ for (int axis = 0; axis < 6; axis++) {
             enum Blocktype blocktype = chunk->blocks[blockidx].type;
 
             // Get global coordinates
-            int globalx = chunk->Key.x * CHUNK_SIZE + voxelpos.x;
-            int globaly = chunk->Key.y * CHUNK_SIZE + voxelpos.y;
-            int globalz = chunk->Key.z * CHUNK_SIZE + voxelpos.z;
+            int globalx = chunk->Key.x * CHUNK_SIZE + voxelpos.x * pow(2, chunk->lod);
+            int globaly = chunk->Key.y * CHUNK_SIZE + voxelpos.y * pow(2, chunk->lod);
+            int globalz = chunk->Key.z * CHUNK_SIZE + voxelpos.z * pow(2, chunk->lod);
 
             // Handle texture
             uint64_t texHandle = handles[blocktype];
@@ -370,7 +375,7 @@ for (int axis = 0; axis < 6; axis++) {
             // Generate face vertices
             generate_face_vertices(worldmeshes, offset, axis, 
                 globalx, globaly, globalz, 
-                floatLo, floatHi);
+                floatLo, floatHi, chunk->lod);
             offset += faceSize;
         }
     }

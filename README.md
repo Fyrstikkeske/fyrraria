@@ -52,3 +52,5 @@ RGFW: Decent
 30/5-25: Day 1 of adding proper chunking. So technically its day 2, But i havent slept yet so it doesnt count. Regardless added uthash for that legendary O(1) in chunking logic. So now its stable 60 which is max due to opengl saying so. Which is super noice. No more lag(its still laggy with big render distances)
 
 3/6-25: YAAAAA, OKOKOk, things i did last couple of days. Made the worldgen know which chunks to update and remove without iterating through the whole thing. Secondly, TANTANS BINARY FACE CULLING. thanks to theese things i dont even need to multithread world gen until like 10-15 render distance. (its still smart though thanks to perlin noise)
+
+19/6-25: yo im back biaches, finally made the checkrenderablechunksthingy allow for a not thingy within. basically, LODS ARE SOON READY(I hope.plsplsplspls) i dont want to fucking do lod anymore and just optimise the gpu now, it would be so nice. there are some schizo ideas(vertex pulling) basically 32 or maybe even 16 bits per face.

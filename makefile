@@ -18,7 +18,6 @@ small: clean $(EXE)
 	@strip --strip-all $(EXE)
 	@echo -e " \033[0;34m ### SMALL OPTIMIZED BUILD COMPLETE \033[0m \n"
 
-
 $(EXE): $(OBJ)
 	$(CC) $(OBJ) -o $(EXE) $(LDFLAGS)
 

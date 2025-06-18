@@ -9,22 +9,18 @@
 #include <stdint.h>
 
 
-
 #define GLAD_GL_IMPLEMENTATION
 #define RGFW_IMPLEMENTATION
 #define RGL_LOAD_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 #define FNL_IMPL
 
+
 #include <RGFW.h>
 #include <cglm/cglm.h>
 #include <stdio.h>
 #include <stb_image.h>
 #include <gl.h>
-
-
-
-#include <time.h>
 
 void keyfunc(RGFW_window* win, unsigned char key, unsigned char keyChar, unsigned char keyMod, unsigned char pressed) {
     if (key == RGFW_escape && pressed) {
@@ -46,7 +42,7 @@ int main() {
 
     Player player;
     glm_vec3_copy((vec3){0.0f, 1.0f, 0.0f}, player.position);
-    const int render_distance = 1000;
+    const int render_distance = 10;
     vec3int previus_chunk_center;
     //do this for safe run
     previus_chunk_center = (vec3int){100, 100, 100};

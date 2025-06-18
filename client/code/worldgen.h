@@ -1,4 +1,6 @@
 #pragma once
+
+// the Ide straight up reports this as an error if it isnt there, but of course the compiler marks this as a warning. fucked regardless
 #define _POSIX_C_SOURCE 199309L
 #define _DEFAULT_SOURCE
 
@@ -15,12 +17,12 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#define CLAMP(x, lower, upper) ((x) < (lower) ? (lower) : ((x) > (upper) ? (upper) : (x)))
 
 
 
 
-Chunk* chunk_add(Chunk** planet, const vec3int* key, const uint64_t* texture_handles) {
+
+Chunk* chunk_add(Chunk** planet, const vec3int* key, const uint64_t* texture_handles, char lod) {
     Chunk* chunk = malloc(sizeof(Chunk));
 
     if (!chunk) {
@@ -29,6 +31,7 @@ Chunk* chunk_add(Chunk** planet, const vec3int* key, const uint64_t* texture_han
     }
     chunk->Key = *key;
     chunk->isdirty = true;
+    chunk->lod = lod;
     glGenVertexArrays(1, &chunk->VAO);
     glGenBuffers(1,&chunk->VBO);
 
@@ -105,6 +108,9 @@ static void add_cubes_to_list(
     int y_start, int y_end,
     int z_start, int z_end
 ) {
+    if (x_start > x_end || y_start > y_end || z_start > z_end) {
+        return;
+    }
     const size_t needed = (size_t)(x_end - x_start + 1) * 
                          (size_t)(y_end - y_start + 1) * 
                          (size_t)(z_end - z_start + 1);
@@ -163,7 +169,7 @@ static void get_entered_exited_cubes(
     vec3int end_center,
     int render_distance,
     vec3int** entered, size_t* entered_count,
-    vec3int** exited, size_t* exited_count
+    vec3int** exited, size_t* exited_count, bool lod
 ) {
     // Initialize outputs
     *entered = NULL;
@@ -174,9 +180,16 @@ static void get_entered_exited_cubes(
     size_t exited_cap = 0;
 
     // Precompute safe render distances
-    const int safe_render_x = MIN(render_distance, (WORLD_X - 1)/ 2);
-    const int safe_render_z = MIN(render_distance, (WORLD_Z - 1)/ 2);
-    const int safe_render_y = render_distance;
+    int safe_render_x = MIN(render_distance, (WORLD_X - 1)/ 2);
+    int safe_render_z = MIN(render_distance, (WORLD_Z - 1)/ 2);
+    int safe_render_y = render_distance;
+    
+    if (lod){
+        safe_render_x = MIN(render_distance, WORLD_X - 1);
+        safe_render_z = MIN(render_distance, WORLD_Z - 1);
+        safe_render_y = render_distance;
+    }
+
 
     // Precompute boundaries with simplified expressions
     const int s_min_x = start_center.x - safe_render_x;
@@ -286,6 +299,120 @@ static void get_entered_exited_cubes(
             overlap_y_min, overlap_y_max,
             MAX(e_min_z, s_max_z + 1), e_max_z);
     }
+        // Precompute safe render distances
+    int safe_render_x_inner = MIN(0, (WORLD_X - 1)/ 2);
+    int safe_render_z_inner = MIN(0, (WORLD_Z - 1)/ 2);
+    int safe_render_y_inner = 0;
+
+
+    // Precompute boundaries with simplified expressions
+    const int s_min_x_inner = start_center.x - safe_render_x_inner;
+    const int s_max_x_inner = start_center.x + safe_render_x_inner;
+    const int s_min_y_inner = start_center.y - safe_render_z_inner;
+    const int s_max_y_inner = start_center.y + safe_render_z_inner;
+    const int s_min_z_inner = start_center.z - safe_render_y_inner;
+    const int s_max_z_inner = start_center.z + safe_render_y_inner;
+
+    const int e_min_x_inner = end_center.x - safe_render_x_inner;
+    const int e_max_x_inner = end_center.x + safe_render_x_inner;
+    const int e_min_y_inner = end_center.y - safe_render_z_inner;
+    const int e_max_y_inner = end_center.y + safe_render_z_inner;
+    const int e_min_z_inner = end_center.z - safe_render_y_inner;
+    const int e_max_z_inner = end_center.z + safe_render_y_inner;
+
+    // Precompute overlapping regions for Y/Z faces
+    const int overlap_x_min_inner = MAX(s_min_x_inner, e_min_x_inner);
+    const int overlap_x_max_inner = MIN(s_max_x_inner, e_max_x_inner);
+    const int overlap_y_min_inner = MAX(s_min_y_inner, e_min_y_inner);
+    const int overlap_y_max_inner = MIN(s_max_y_inner, e_max_y_inner);
+
+        // EXITED cubes (in start but not in end)
+    // Left face (X-min)
+    if (s_min_x_inner < e_min_x_inner) {
+        add_cubes_to_list(entered, entered_count, &entered_cap,
+            s_min_x_inner, MIN(s_max_x_inner, e_min_x_inner - 1),
+            s_min_y_inner, s_max_y_inner,
+            s_min_z_inner, s_max_z_inner);
+    }
+    // Right face (X-max)
+    if (s_max_x_inner > e_max_x_inner) {
+        add_cubes_to_list(entered, entered_count, &entered_cap,
+            MAX(s_min_x_inner, e_max_x_inner + 1), s_max_x_inner,
+            s_min_y_inner, s_max_y_inner,
+            s_min_z_inner, s_max_z_inner);
+    }
+    // Front face (Y-min)
+    if (s_min_y_inner < e_min_y_inner) {
+        add_cubes_to_list(entered, entered_count, &entered_cap,
+            overlap_x_min_inner, overlap_x_max_inner,
+            s_min_y_inner, MIN(s_max_y_inner, e_min_y_inner - 1),
+            s_min_z_inner, s_max_z_inner);
+    }
+    // Back face (Y-max)
+    if (s_max_y_inner > e_max_y_inner) {
+        add_cubes_to_list(entered, entered_count, &entered_cap,
+            overlap_x_min_inner, overlap_x_max_inner,
+            MAX(s_min_y_inner, e_max_y_inner + 1), s_max_y_inner,
+            s_min_z_inner, s_max_z_inner);
+    }
+    // Bottom face (Z-min)
+    if (s_min_z_inner < e_min_z_inner) {
+        add_cubes_to_list(entered, entered_count, &entered_cap,
+            overlap_x_min_inner, overlap_x_max_inner,
+            overlap_y_min_inner, overlap_y_max_inner,
+            s_min_z_inner, MIN(s_max_z_inner, e_min_z_inner - 1));
+    }
+    // Top face (Z-max)
+    if (s_max_z_inner > e_max_z_inner) {
+        add_cubes_to_list(entered, entered_count, &entered_cap,
+            overlap_x_min_inner, overlap_x_max_inner,
+            overlap_y_min_inner, overlap_y_max_inner,
+            MAX(s_min_z_inner, e_max_z_inner + 1), s_max_z_inner);
+    }
+
+    // ENTERED cubes (in end but not in start)
+    // Left face (X-min)
+    if (e_min_x_inner < s_min_x_inner) {
+        add_cubes_to_list(exited, exited_count, &exited_cap,
+            e_min_x_inner, MIN(e_max_x_inner, s_min_x_inner - 1),
+            e_min_y_inner, e_max_y_inner,
+            e_min_z_inner, e_max_z_inner);
+    }
+    // Right face (X-max)
+    if (e_max_x_inner > s_max_x_inner) {
+        add_cubes_to_list(exited, exited_count, &exited_cap,
+            MAX(e_min_x_inner, s_max_x_inner + 1), e_max_x_inner,
+            e_min_y_inner, e_max_y_inner,
+            e_min_z_inner, e_max_z_inner);
+    }
+    // Front face (Y-min)
+    if (e_min_y_inner < s_min_y_inner) {
+        add_cubes_to_list(exited, exited_count, &exited_cap,
+            overlap_x_min_inner, overlap_x_max_inner,
+            e_min_y_inner, MIN(e_max_y_inner, s_min_y_inner - 1),
+            e_min_z_inner, e_max_z_inner);
+    }
+    // Back face (Y-max)
+    if (e_max_y_inner > s_max_y_inner) {
+        add_cubes_to_list(exited, exited_count, &exited_cap,
+            overlap_x_min_inner, overlap_x_max_inner,
+            MAX(e_min_y_inner, s_max_y_inner + 1), e_max_y_inner,
+            e_min_z_inner, e_max_z_inner);
+    }
+    // Bottom face (Z-min)
+    if (e_min_z_inner < s_min_z_inner) {
+        add_cubes_to_list(exited, exited_count, &exited_cap,
+            overlap_x_min_inner, overlap_x_max_inner,
+            overlap_y_min_inner, overlap_y_max_inner,
+            e_min_z_inner, MIN(e_max_z_inner, s_min_z_inner - 1));
+    }
+    // Top face (Z-max)
+    if (e_max_z_inner > s_max_z_inner) {
+        add_cubes_to_list(exited, exited_count, &exited_cap,
+            overlap_x_min_inner, overlap_x_max_inner,
+            overlap_y_min_inner, overlap_y_max_inner,
+            MAX(e_min_z_inner, s_max_z_inner + 1), e_max_z_inner);
+    }
 }
 // Chunk update functions
 void update_nearby_chunks(
@@ -298,75 +425,158 @@ void update_nearby_chunks(
     vec3int* previous_chunk_center,
     const uint64_t* texture_handles
 ) {
-    // Calculate current chunk center
-    const int player_chunk_x = (int)floor(position[0]) / CHUNK_SIZE;
-    const int player_chunk_y = (int)floor(position[1]) / CHUNK_SIZE;
-    const int player_chunk_z = (int)floor(position[2]) / CHUNK_SIZE;
-    const vec3int current_center = {player_chunk_x, player_chunk_y, player_chunk_z};
-    
-    // Return if center hasn't changed
-    if (previous_chunk_center->x == current_center.x &&
-        previous_chunk_center->y == current_center.y &&
-        previous_chunk_center->z == current_center.z) {
-        return;
-    }
-    
-    PROFILE_BEGIN(update_nearby_chunks);
-    
-    // Calculate entered/exited chunks
-    vec3int* entered = NULL;
-    vec3int* exited = NULL;
-    size_t entered_count = 0;
-    size_t exited_count = 0;
-    
-    get_entered_exited_cubes(
-        *previous_chunk_center,
-        current_center,
-        render_distance,
-        &entered, &entered_count,
-        &exited, &exited_count);
-    
-    // Update previous center
-    *previous_chunk_center = current_center;
-    
-    // Process exited chunks
-    PROFILE_BEGIN(Remove_chunks);
-    for (int i = 0; i < exited_count; i++) {
-        if (exited[i].y < 0 || exited[i].y > world_y){continue;}
 
-        vec3int wrapped = exited[i];
-        wrap_coordinates(world_x, world_y, world_z, 
-                        &wrapped.x, &wrapped.y, &wrapped.z);
-        
-        Chunk* chunk = chunk_find(planet, &wrapped);
-        if (chunk) {
-            chunk_remove(planet, &chunk->Key);
-        }
-    }
-    PROFILE_END(Remove_chunks);
-    // Process entered chunks
-    PROFILE_BEGIN(Add_chunks);
-    printf("%zu\n", entered_count);
-    printf("%zu\n", exited_count);
-    for (int i = 0; i < entered_count; i++) {
-        if (entered[i].y < 0 || entered[i].y > world_y){continue;}
-        vec3int wrapped = entered[i];
-        wrap_coordinates(world_x, world_y, world_z, 
-                        &wrapped.x, &wrapped.y, &wrapped.z);
-        
-        vec3int key = wrapped;
-        Chunk* chunk = chunk_find(planet, &key);
-        
-        if (!chunk) {
-            chunk = chunk_add(planet, &key, texture_handles);
-            chunk->isdirty = true;
-        }
-        chunk->is_active = true;
-    }
-    PROFILE_END(Add_chunks);
+    char howmanylods = 0;
 
-    // Clean up
-    free(entered);
-    free(exited);
-    PROFILE_END(update_nearby_chunks);
+    for (char layer_of_lod = 0; layer_of_lod <= howmanylods; layer_of_lod++){
+        if (layer_of_lod == 0){
+            // Calculate current chunk center
+            const int player_chunk_x = (int)floor(position[0]) / CHUNK_SIZE;
+            const int player_chunk_y = (int)floor(position[1]) / CHUNK_SIZE;
+            const int player_chunk_z = (int)floor(position[2]) / CHUNK_SIZE;
+            const vec3int current_center = {player_chunk_x, player_chunk_y, player_chunk_z};
+
+            // Return if center hasn't changed
+            if (previous_chunk_center->x == current_center.x &&
+                previous_chunk_center->y == current_center.y &&
+                previous_chunk_center->z == current_center.z) {
+                return;
+            }
+
+            PROFILE_BEGIN(update_nearby_chunks);
+
+
+
+            // Calculate entered/exited chunks
+            vec3int* entered = NULL;
+            vec3int* exited = NULL;
+            size_t entered_count = 0;
+            size_t exited_count = 0;
+
+            get_entered_exited_cubes(
+                *previous_chunk_center,
+                current_center,
+                render_distance,
+                &entered, &entered_count,
+                &exited, &exited_count, false);
+            printf("%zu\n", entered_count);
+            printf("%zu\n", exited_count);
+            // Update previous center
+            *previous_chunk_center = current_center;
+            
+            // Process exited chunks
+            PROFILE_BEGIN(Remove_chunks);
+            for (int i = 0; i < exited_count; i++) {
+                if (exited[i].y < 0 || exited[i].y >= world_y) continue;
+            
+                vec3int wrapped = exited[i];
+                wrap_coordinates(world_x, world_y, world_z, 
+                                &wrapped.x, &wrapped.y, &wrapped.z);
+                
+                Chunk* chunk = chunk_find(planet, &wrapped);
+                if (chunk) {
+                    chunk_remove(planet, &chunk->Key);
+                }
+            }
+            PROFILE_END(Remove_chunks);
+            // Process entered chunks
+            PROFILE_BEGIN(Add_chunks);
+
+            for (int i = 0; i < entered_count; i++) {
+                if (entered[i].y < 0 || entered[i].y >= world_y) continue;
+                vec3int wrapped = entered[i];
+                wrap_coordinates(world_x, world_y, world_z, 
+                                &wrapped.x, &wrapped.y, &wrapped.z);
+                
+                vec3int key = wrapped;
+                Chunk* chunk = chunk_find(planet, &key);
+                
+                if (!chunk) {
+                    chunk = chunk_add(planet, &key, texture_handles, layer_of_lod);
+                    chunk->isdirty = true;
+                }
+                chunk->is_active = true;
+            }
+            PROFILE_END(Add_chunks);
+
+            // Clean up
+            free(entered);
+            free(exited);
+            PROFILE_END(update_nearby_chunks);
+        }
+        if (layer_of_lod == 1){
+            // Calculate current chunk center
+            const int player_chunk_x = (int)floor(position[0]) / (CHUNK_SIZE * powf(2, layer_of_lod));
+            const int player_chunk_y = (int)floor(position[1]) / (CHUNK_SIZE * powf(2, layer_of_lod));
+            const int player_chunk_z = (int)floor(position[2]) / (CHUNK_SIZE * powf(2, layer_of_lod));
+            const vec3int current_center = {player_chunk_x, player_chunk_y, player_chunk_z};
+
+            // Return if center hasn't changed
+            if (previous_chunk_center->x * powf(2, layer_of_lod) == current_center.x &&
+                previous_chunk_center->y * powf(2, layer_of_lod) == current_center.y &&
+                previous_chunk_center->z * powf(2, layer_of_lod) == current_center.z) {
+                return;
+            }
+
+            PROFILE_BEGIN(update_nearby_chunks);
+
+
+
+            // Calculate entered/exited chunks
+            vec3int* entered = NULL;
+            vec3int* exited = NULL;
+            size_t entered_count = 0;
+            size_t exited_count = 0;
+
+            get_entered_exited_cubes(
+                *previous_chunk_center,
+                current_center,
+                render_distance * powf(2, layer_of_lod),
+                &entered, &entered_count,
+                &exited, &exited_count, true);
+            
+
+            // Process entered chunks
+            PROFILE_BEGIN(Add_chunks);
+            printf("%zu\n", entered_count);
+            printf("%zu\n", exited_count);
+            for (int i = 0; i < entered_count; i++) {
+                if (entered[i].y < 0 || entered[i].y >= world_y) continue;
+                vec3int wrapped = entered[i];
+                wrap_coordinates(world_x, world_y, world_z, 
+                                &wrapped.x, &wrapped.y, &wrapped.z);
+                
+                vec3int key = wrapped;
+                Chunk* chunk = chunk_find(planet, &key);
+                
+                if (!chunk) {
+                    chunk = chunk_add(planet, &key, texture_handles, layer_of_lod);
+                    chunk->isdirty = true;
+                }
+                chunk->is_active = true;
+            }
+            PROFILE_END(Add_chunks);
+
+                        // Process exited chunks
+            PROFILE_BEGIN(Remove_chunks);
+            for (int i = 0; i < exited_count; i++) {
+                if (exited[i].y < 0 || exited[i].y >= world_y) continue;
+            
+                vec3int wrapped = exited[i];
+                wrap_coordinates(world_x, world_y, world_z, 
+                                &wrapped.x, &wrapped.y, &wrapped.z);
+                
+                Chunk* chunk = chunk_find(planet, &wrapped);
+                if (chunk) {
+                    chunk_remove(planet, &chunk->Key);
+                }
+            }
+            PROFILE_END(Remove_chunks);
+            // Clean up
+            free(entered);
+            free(exited);
+            PROFILE_END(update_nearby_chunks);
+        }
+    
+    }
 }
