@@ -1,66 +1,48 @@
 #pragma once
 
 // the Ide straight up reports this as an error if it isnt there, but of course the compiler marks this as a warning. fucked regardless
-#define _POSIX_C_SOURCE 199309L
-#define _DEFAULT_SOURCE
 
-#define FNL_IMPL
-
-#include <stdio.h>
 
 #include "FastNoiseLite.h"
-#include <time.h>
-#include "cglm/types.h"
 #include "meshing.h"
 #include "utils.h"
-#include "uthash.h"
-#include <stdbool.h>
-#include <stdlib.h>
 
 
+static inline Chunk* chunk_add(const vec3int key, const uint64_t* texture_handles, char lod, map(vec3int, Chunk)* lod_layer) {
+    Chunk chunk;
 
-
-
-
-Chunk* chunk_add(Chunk** planet, const vec3int* key, const uint64_t* texture_handles, char lod) {
-    Chunk* chunk = malloc(sizeof(Chunk));
-
-    if (!chunk) {
-        fprintf(stderr, "Memory allocation failed for chunk!\n");
-        exit(EXIT_FAILURE);
-    }
-    chunk->Key = *key;
-    chunk->isdirty = true;
-    chunk->lod = lod;
-    glGenVertexArrays(1, &chunk->VAO);
-    glGenBuffers(1,&chunk->VBO);
-
+    chunk.isdirty = true;
+    chunk.lod = lod;
+    glGenVertexArrays(1, &chunk.VAO);
+    glGenBuffers(1,&chunk.VBO);
     
-    generate_chunk(chunk);
+    generate_chunk(&chunk, key.x, key.y, key.z);
 
+    generate_mesh_for_chunk(&chunk, texture_handles, key.x, key.y, key.z);
 
+    Chunk* inserted = insert(lod_layer, key, chunk);
+    if (!inserted) {
+        fprintf(stderr, "Failed to insert chunk into LOD layer map.\n");
+        abort();
+    }
+    return inserted;
+}
 
-    generate_mesh_for_chunk(chunk, texture_handles);
-
-    HASH_ADD(hh, *planet, Key, sizeof(vec3int), chunk);
+static inline Chunk* chunk_find(const vec3int key, map(vec3int, Chunk)* lod_layer) {
+    Chunk *chunk = get(lod_layer, key);
     return chunk;
 }
 
-Chunk* chunk_find(Chunk** planet, const vec3int* key) {
-    Chunk* chunk;
-    HASH_FIND(hh, *planet, key, sizeof(vec3int), chunk);
-    return chunk;
-}
+static inline void chunk_remove(const vec3int key, map(vec3int, Chunk)* lod_layer) {
 
-void chunk_remove(Chunk** planet, const vec3int* key) {
-    Chunk* chunk = chunk_find(planet, key);
+
+    Chunk* chunk = chunk_find(key, lod_layer);
     if (chunk) {
 
         glDeleteBuffers(1,&chunk->VBO);
         glDeleteVertexArrays(1, &chunk->VAO);
 
-        HASH_DEL(*planet, chunk);
-        free(chunk);
+        erase(lod_layer, key);
     }
 }
 
@@ -169,7 +151,8 @@ static void get_entered_exited_cubes(
     vec3int end_center,
     int render_distance,
     vec3int** entered, size_t* entered_count,
-    vec3int** exited, size_t* exited_count, bool lod
+    vec3int** exited, size_t* exited_count, bool lod, 
+    int world_x, int world_z, int world_y, int empty_render_distance
 ) {
     // Initialize outputs
     *entered = NULL;
@@ -180,13 +163,13 @@ static void get_entered_exited_cubes(
     size_t exited_cap = 0;
 
     // Precompute safe render distances
-    int safe_render_x = MIN(render_distance, (WORLD_X - 1)/ 2);
-    int safe_render_z = MIN(render_distance, (WORLD_Z - 1)/ 2);
+    int safe_render_x = MIN(render_distance, (world_x - 1)/ 2);
+    int safe_render_z = MIN(render_distance, (world_z - 1)/ 2);
     int safe_render_y = render_distance;
     
     if (lod){
-        safe_render_x = MIN(render_distance, WORLD_X - 1);
-        safe_render_z = MIN(render_distance, WORLD_Z - 1);
+        safe_render_x = MIN(render_distance, world_x - 1);
+        safe_render_z = MIN(render_distance, world_z - 1);
         safe_render_y = render_distance;
     }
 
@@ -300,9 +283,9 @@ static void get_entered_exited_cubes(
             MAX(e_min_z, s_max_z + 1), e_max_z);
     }
         // Precompute safe render distances
-    int safe_render_x_inner = MIN(0, (WORLD_X - 1)/ 2);
-    int safe_render_z_inner = MIN(0, (WORLD_Z - 1)/ 2);
-    int safe_render_y_inner = 0;
+    int safe_render_x_inner = MIN(empty_render_distance, (world_x - 1)/ 2);
+    int safe_render_z_inner = MIN(empty_render_distance, (world_z - 1)/ 2);
+    int safe_render_y_inner = empty_render_distance;
 
 
     // Precompute boundaries with simplified expressions
@@ -416,7 +399,7 @@ static void get_entered_exited_cubes(
 }
 // Chunk update functions
 void update_nearby_chunks(
-    Chunk** planet,
+    map(vec3int, Chunk) *lod_layer,
     int world_x,
     int world_y,
     int world_z,
@@ -426,22 +409,24 @@ void update_nearby_chunks(
     const uint64_t* texture_handles
 ) {
 
-    char howmanylods = 0;
+    char howmanylods = 1;
 
-    for (char layer_of_lod = 0; layer_of_lod <= howmanylods; layer_of_lod++){
-        if (layer_of_lod == 0){
+    //this case is generel for all
+    const int player_chunk_x = (int)floor(position[0]) / CHUNK_SIZE;
+    const int player_chunk_y = (int)floor(position[1]) / CHUNK_SIZE;
+    const int player_chunk_z = (int)floor(position[2]) / CHUNK_SIZE;
+    const vec3int current_center = {player_chunk_x, player_chunk_y, player_chunk_z};
+    
+    // Return if center hasn't changed
+    if (previous_chunk_center->x == current_center.x &&
+        previous_chunk_center->y == current_center.y &&
+        previous_chunk_center->z == current_center.z) {
+        return;
+    }
+
+
             // Calculate current chunk center
-            const int player_chunk_x = (int)floor(position[0]) / CHUNK_SIZE;
-            const int player_chunk_y = (int)floor(position[1]) / CHUNK_SIZE;
-            const int player_chunk_z = (int)floor(position[2]) / CHUNK_SIZE;
-            const vec3int current_center = {player_chunk_x, player_chunk_y, player_chunk_z};
 
-            // Return if center hasn't changed
-            if (previous_chunk_center->x == current_center.x &&
-                previous_chunk_center->y == current_center.y &&
-                previous_chunk_center->z == current_center.z) {
-                return;
-            }
 
             PROFILE_BEGIN(update_nearby_chunks);
 
@@ -458,7 +443,7 @@ void update_nearby_chunks(
                 current_center,
                 render_distance,
                 &entered, &entered_count,
-                &exited, &exited_count, false);
+                &exited, &exited_count, false, world_x, world_z, world_y, 0);
             printf("%zu\n", entered_count);
             printf("%zu\n", exited_count);
             // Update previous center
@@ -473,9 +458,9 @@ void update_nearby_chunks(
                 wrap_coordinates(world_x, world_y, world_z, 
                                 &wrapped.x, &wrapped.y, &wrapped.z);
                 
-                Chunk* chunk = chunk_find(planet, &wrapped);
+                Chunk* chunk = chunk_find(wrapped, lod_layer);
                 if (chunk) {
-                    chunk_remove(planet, &chunk->Key);
+                    chunk_remove(wrapped, lod_layer);
                 }
             }
             PROFILE_END(Remove_chunks);
@@ -488,11 +473,11 @@ void update_nearby_chunks(
                 wrap_coordinates(world_x, world_y, world_z, 
                                 &wrapped.x, &wrapped.y, &wrapped.z);
                 
-                vec3int key = wrapped;
-                Chunk* chunk = chunk_find(planet, &key);
+                //vec3int key = wrapped;
+                Chunk* chunk = chunk_find(wrapped, lod_layer);
                 
                 if (!chunk) {
-                    chunk = chunk_add(planet, &key, texture_handles, layer_of_lod);
+                    chunk = chunk_add(wrapped, texture_handles, 0, lod_layer);
                     chunk->isdirty = true;
                 }
                 chunk->is_active = true;
@@ -503,80 +488,5 @@ void update_nearby_chunks(
             free(entered);
             free(exited);
             PROFILE_END(update_nearby_chunks);
-        }
-        if (layer_of_lod == 1){
-            // Calculate current chunk center
-            const int player_chunk_x = (int)floor(position[0]) / (CHUNK_SIZE * powf(2, layer_of_lod));
-            const int player_chunk_y = (int)floor(position[1]) / (CHUNK_SIZE * powf(2, layer_of_lod));
-            const int player_chunk_z = (int)floor(position[2]) / (CHUNK_SIZE * powf(2, layer_of_lod));
-            const vec3int current_center = {player_chunk_x, player_chunk_y, player_chunk_z};
-
-            // Return if center hasn't changed
-            if (previous_chunk_center->x * powf(2, layer_of_lod) == current_center.x &&
-                previous_chunk_center->y * powf(2, layer_of_lod) == current_center.y &&
-                previous_chunk_center->z * powf(2, layer_of_lod) == current_center.z) {
-                return;
-            }
-
-            PROFILE_BEGIN(update_nearby_chunks);
-
-
-
-            // Calculate entered/exited chunks
-            vec3int* entered = NULL;
-            vec3int* exited = NULL;
-            size_t entered_count = 0;
-            size_t exited_count = 0;
-
-            get_entered_exited_cubes(
-                *previous_chunk_center,
-                current_center,
-                render_distance * powf(2, layer_of_lod),
-                &entered, &entered_count,
-                &exited, &exited_count, true);
-            
-
-            // Process entered chunks
-            PROFILE_BEGIN(Add_chunks);
-            printf("%zu\n", entered_count);
-            printf("%zu\n", exited_count);
-            for (int i = 0; i < entered_count; i++) {
-                if (entered[i].y < 0 || entered[i].y >= world_y) continue;
-                vec3int wrapped = entered[i];
-                wrap_coordinates(world_x, world_y, world_z, 
-                                &wrapped.x, &wrapped.y, &wrapped.z);
-                
-                vec3int key = wrapped;
-                Chunk* chunk = chunk_find(planet, &key);
-                
-                if (!chunk) {
-                    chunk = chunk_add(planet, &key, texture_handles, layer_of_lod);
-                    chunk->isdirty = true;
-                }
-                chunk->is_active = true;
-            }
-            PROFILE_END(Add_chunks);
-
-                        // Process exited chunks
-            PROFILE_BEGIN(Remove_chunks);
-            for (int i = 0; i < exited_count; i++) {
-                if (exited[i].y < 0 || exited[i].y >= world_y) continue;
-            
-                vec3int wrapped = exited[i];
-                wrap_coordinates(world_x, world_y, world_z, 
-                                &wrapped.x, &wrapped.y, &wrapped.z);
-                
-                Chunk* chunk = chunk_find(planet, &wrapped);
-                if (chunk) {
-                    chunk_remove(planet, &chunk->Key);
-                }
-            }
-            PROFILE_END(Remove_chunks);
-            // Clean up
-            free(entered);
-            free(exited);
-            PROFILE_END(update_nearby_chunks);
-        }
     
-    }
 }

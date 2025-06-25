@@ -12,16 +12,16 @@ constexpr int faceSize = vertexSize * 6;
 
 //should be in worldgen.h but screw that due to circular dependencies. fuck this shit
 static inline void generate_chunk(
-  Chunk* chunk
+  Chunk* chunk, int chunk_x, int chunk_y, int chunk_z 
 ){
   
 
   memset(chunk->blocks, AIR, CHUNK_VOLUME * sizeof(enum Blocktype));
 
   // Generate terrain features
-  const int base_x = chunk->Key.x * CHUNK_SIZE;
-  const int base_y = chunk->Key.y * CHUNK_SIZE;
-  const int base_z = chunk->Key.z * CHUNK_SIZE;
+  const int base_x = chunk_x * CHUNK_SIZE;
+  const int base_y = chunk_y * CHUNK_SIZE;
+  const int base_z = chunk_z * CHUNK_SIZE;
 
   // Configure noise generator
   fnl_state noise = fnlCreateState();
@@ -49,8 +49,6 @@ static inline void generate_chunk(
 
               if (global_y <= height) {
                   chunk->blocks[block_idx].type = GRASS;
-              } else {
-                  chunk->blocks[block_idx].type = AIR;
               }
               if (global_y == 0){chunk->blocks[block_idx].type = WATER;}
           }
@@ -150,40 +148,25 @@ memcpy(&buffer[offset], face, sizeof(face));
 
 static inline void generate_mesh_for_chunk(
 Chunk *chunk,
-const uint64_t* handles
+const uint64_t* handles,
+int chunk_x, 
+int chunk_y, 
+int chunk_z
 ) {
 
-  //this stinks
+  //this stinks, legit rots
   Chunk chunkup;
-  chunkup.Key.x = chunk->Key.x;
-  chunkup.Key.z = chunk->Key.z;
-  chunkup.Key.y = CLAMP(chunk->Key.y + 1, 0, WORLD_Y);
-  generate_chunk(&chunkup);
+  generate_chunk(&chunkup, chunk_x, CLAMP(chunk_z + 1, 0, WORLD_Y), chunk_z);
   Chunk chunkdown;
-  chunkdown.Key.x = chunk->Key.x;
-  chunkdown.Key.z = chunk->Key.z;
-  chunkdown.Key.y = CLAMP(chunk->Key.y - 1, 0, WORLD_Y);
-  generate_chunk(&chunkdown);
+  generate_chunk(&chunkdown, chunk_x, CLAMP(chunk_z - 1, 0, WORLD_Y), chunk_z);
   Chunk chunknorth;
-  chunknorth.Key.x = chunk->Key.x;
-  chunknorth.Key.z = EUCLID_MODULO(chunk->Key.z + 1, WORLD_Z);
-  chunknorth.Key.y = chunk->Key.y;
-  generate_chunk(&chunknorth);
+  generate_chunk(&chunknorth, chunk_x, chunk_y, EUCLID_MODULO(chunk_z + 1, WORLD_Z));
   Chunk chunksouth;
-  chunksouth.Key.x = chunk->Key.x;
-  chunksouth.Key.z = EUCLID_MODULO(chunk->Key.z - 1, WORLD_Z);
-  chunksouth.Key.y = chunk->Key.y;
-  generate_chunk(&chunksouth);
+  generate_chunk(&chunksouth, chunk_x, chunk_y, EUCLID_MODULO(chunk_z - 1, WORLD_Z));
   Chunk chunkwest;
-  chunkwest.Key.x = EUCLID_MODULO(chunk->Key.x - 1, WORLD_X);
-  chunkwest.Key.z = chunk->Key.z;
-  chunkwest.Key.y = chunk->Key.y;
-  generate_chunk(&chunkwest);
+  generate_chunk(&chunkwest, EUCLID_MODULO(chunk_x - 1, WORLD_X), chunk_y, chunk_z);
   Chunk chunkeast;
-  chunkeast.Key.x = EUCLID_MODULO(chunk->Key.x + 1, WORLD_X);
-  chunkeast.Key.z = chunk->Key.z;
-  chunkeast.Key.y = chunk->Key.y;
-  generate_chunk(&chunkeast);
+  generate_chunk(&chunkeast, EUCLID_MODULO(chunk_x + 1, WORLD_X), chunk_y, chunk_z);
   
 
   struct block padded_chunk_blocks[CHUNK_VOLUME_P] = {0};
@@ -360,9 +343,9 @@ for (int axis = 0; axis < 6; axis++) {
             enum Blocktype blocktype = chunk->blocks[blockidx].type;
 
             // Get global coordinates
-            int globalx = chunk->Key.x * CHUNK_SIZE + voxelpos.x * pow(2, chunk->lod);
-            int globaly = chunk->Key.y * CHUNK_SIZE + voxelpos.y * pow(2, chunk->lod);
-            int globalz = chunk->Key.z * CHUNK_SIZE + voxelpos.z * pow(2, chunk->lod);
+            int globalx = chunk_x * CHUNK_SIZE + voxelpos.x * pow(2, chunk->lod);
+            int globaly = chunk_y * CHUNK_SIZE + voxelpos.y * pow(2, chunk->lod);
+            int globalz = chunk_z * CHUNK_SIZE + voxelpos.z * pow(2, chunk->lod);
 
             // Handle texture
             uint64_t texHandle = handles[blocktype];

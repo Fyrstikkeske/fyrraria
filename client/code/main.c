@@ -1,30 +1,20 @@
-#define _POSIX_C_SOURCE 199309L
-#define _DEFAULT_SOURCE
-
-#include "cglm/types.h"
 #include "shader.h"
+
 #include "utils.h"
-#include "worldgen.h"
-#include <X11/Xlib.h>
-#include <stdint.h>
-
-
-#define GLAD_GL_IMPLEMENTATION
-#define RGFW_IMPLEMENTATION
-#define RGL_LOAD_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
 #define FNL_IMPL
+#define STB_IMAGE_IMPLEMENTATION
+#define RGFW_IMPLEMENTATION
+#define GLAD_GL_IMPLEMENTATION
 
-
+#include <gl.h>
 #include <RGFW.h>
 #include <cglm/cglm.h>
-#include <stdio.h>
 #include <stb_image.h>
-#include <gl.h>
+#include "worldgen.h"
 
 void keyfunc(RGFW_window* win, unsigned char key, unsigned char keyChar, unsigned char keyMod, unsigned char pressed) {
     if (key == RGFW_escape && pressed) {
-        RGFW_window_setShouldClose(win, True);
+		RGFW_window_setShouldClose(win, True);
     }
 }
 
@@ -34,20 +24,29 @@ int main() {
     gladLoadGL((GLADloadfunc) RGFW_getProcAddress);
 
     stbi_set_flip_vertically_on_load(1);
-
+    
     if (!win) {
         fprintf(stderr, "Failed to create window or OpenGL context.\n");
         return -1;
     }
 
+    vec( map(vec3int, Chunk) ) lodLayers;
+    init( &lodLayers );
+
+    map(vec3int, Chunk) baselevel;
+    init(&baselevel);
+
+    if( !push( &lodLayers, baselevel ) ){
+        printf("out of memory\n");
+        abort();
+    }
+
     Player player;
     glm_vec3_copy((vec3){0.0f, 1.0f, 0.0f}, player.position);
     const int render_distance = 10;
-    vec3int previus_chunk_center;
+    vec3int previus_chunk_center; 
     //do this for safe run
     previus_chunk_center = (vec3int){100, 100, 100};
-    // Hashmap for chunk storage
-    Chunk* planet = NULL;
 
     int shaderProgram = make_shader_program();
     glEnable(GL_DEPTH_TEST);
@@ -127,7 +126,7 @@ int main() {
         handle_movement(win, camera_front_local, player.position);
         // Update and generate chunks using hashmap
         
-        update_nearby_chunks(&planet, WORLD_X, WORLD_Y, WORLD_Z, render_distance, player.position, &previus_chunk_center, textuer_handles);
+        update_nearby_chunks(get( &lodLayers, 0 ), WORLD_X, WORLD_Y, WORLD_Z, render_distance, player.position, &previus_chunk_center, textuer_handles);
         // Update window title with FPS
         char buffer[256];
         snprintf(buffer, sizeof(buffer), "Fyrraria: %d | Frame: %.2fms | Pos:X:%.1f Y:%.1f Z:%.1f", fps, frameTime * 1000.0, player.position[0], player.position[1], player.position[2]);
@@ -152,13 +151,14 @@ int main() {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         PROFILE_BEGIN(Renderloop);
         // Render chunks from hashmap
-        Chunk *current_chunk, *tmp;
-        HASH_ITER(hh, planet, current_chunk, tmp) {
-            if (current_chunk->vertices == 0) continue;
-            glBindVertexArray(current_chunk->VAO);
-            glBindBuffer(GL_ARRAY_BUFFER, current_chunk->VBO);
-            glDrawArrays(GL_TRIANGLES, 0, current_chunk->vertices);
-        }
+        for_each(&lodLayers, layer){
+            for_each( layer, key, chunk ){
+                if (chunk->vertices == 0) continue;
+                    glBindVertexArray(chunk->VAO);
+                    glBindBuffer(GL_ARRAY_BUFFER, chunk->VBO);
+                    glDrawArrays(GL_TRIANGLES, 0, chunk->vertices);
+            };
+        };
         PROFILE_END(Renderloop);
         PROFILE_BEGIN(SwapBuffer);
         RGFW_window_swapBuffers(win);
@@ -169,13 +169,7 @@ int main() {
     }
 
     // Clean up hashmap
-    Chunk *chunk, *tmp;
-    HASH_ITER(hh, planet, chunk, tmp) {
-        HASH_DEL(planet, chunk);
-        glDeleteVertexArrays(1, &chunk->VAO);
-        glDeleteBuffers(1, &chunk->VBO);
-        free(chunk);
-    }
+    // NO MUHUHAHUA
     
     RGFW_window_close(win);
     return 0;

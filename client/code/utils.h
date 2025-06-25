@@ -1,14 +1,12 @@
 #pragma once
 
-#include <math.h>
+
 #include <stb_image.h>
-#include "cglm/types.h"
-#include "cglm/vec3.h"
 #include <cglm/cglm.h>
 #include <gl.h>
 #include <RGFW.h>
 #include <uchar.h>
-#include "uthash.h"
+#include "cc.h"
 
 #define GLAD_GL_IMPLEMENTATION
 
@@ -51,12 +49,12 @@
 
 
 
-const char vertexShaderSource[] = { 
+constexpr char vertexShaderSource[] = {
     #embed "../shaders/cube.vert" 
     , 0
 };
 
-const char fragmentShaderSource[] = { 
+constexpr char fragmentShaderSource[] = {
     #embed "../shaders/cube.frag" 
     , 0
 };
@@ -91,9 +89,9 @@ constexpr int CHUNK_VOLUME_P = CHUNK_SIZE_P * CHUNK_SIZE_P * CHUNK_SIZE_P;
 
 //TODO, move this to the planets struct so we can get more planets
 // X and Y must be odd due to some chunk detection glitch? otherwise the Other side of the torus final chunk doesnt render
-const int WORLD_X = 100;
+const int WORLD_X = 300;
 const int WORLD_Y = 1;
-const int WORLD_Z = 30;
+const int WORLD_Z = 60;
 
 #define CLAMP(x, lower, upper) ((x) < (lower) ? (lower) : ((x) > (upper) ? (upper) : (x)))
 #define EUCLID_MODULO(x, modulo) ((x % modulo + modulo) % modulo)
@@ -118,22 +116,40 @@ struct block{
 };
 
 typedef struct{
-    int x;
-    int y;
-    int z;
+    int32_t x;
+    int32_t y;
+    int32_t z;
 } vec3int;
 
+#define CC_CMPR vec3int, {                            \
+    if (val_1.x != val_2.x)                           \
+        return val_1.x < val_2.x ? -1 : 1;            \
+    if (val_1.y != val_2.y)                           \
+        return val_1.y < val_2.y ? -1 : 1;            \
+    if (val_1.z != val_2.z)                           \
+        return val_1.z < val_2.z ? -1 : 1;            \
+    return 0;                                         \
+}
+
+#define CC_HASH vec3int, {                             \
+    return (uint64_t)val.x * 2654435761ull +           \
+           (uint64_t)val.y * 2246822519ull +           \
+           (uint64_t)val.z * 3266489917ull;            \
+}
+
+#include "cc.h"
+
 typedef struct {
-    vec3int Key;
     struct block blocks[CHUNK_VOLUME];
     bool isdirty;
     GLuint VBO;
     GLuint VAO;
     int vertices;
     bool is_active;
-    UT_hash_handle hh;
     char8_t lod;
 } Chunk;
+
+
 
 static inline void transform_to_global_position(
     vec3 localPosition, vec3 globalPosition, int Worldx, int Worldz, int chunksize)
