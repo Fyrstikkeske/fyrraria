@@ -162,10 +162,21 @@ static void get_entered_exited_cubes(
     size_t entered_cap = 0;
     size_t exited_cap = 0;
 
+    int x_correction = 0;
+    int z_correction = 0;
+
     // Precompute safe render distances
     int safe_render_x = MIN(render_distance, (world_x - 1)/ 2);
     int safe_render_z = MIN(render_distance, (world_z - 1)/ 2);
     int safe_render_y = render_distance;
+
+    if ((world_x % 2) == 0 && render_distance >= (world_x - 1)/ 2){
+        x_correction = 1;
+    }
+
+    if ((world_z % 2) == 0 && render_distance >= (world_z - 1)/ 2){
+        z_correction = 1;
+    }
     
     if (lod){
         safe_render_x = MIN(render_distance, world_x - 1);
@@ -176,18 +187,18 @@ static void get_entered_exited_cubes(
 
     // Precompute boundaries with simplified expressions
     const int s_min_x = start_center.x - safe_render_x;
-    const int s_max_x = start_center.x + safe_render_x;
+    const int s_max_x = start_center.x + safe_render_x + x_correction;
     const int s_min_y = start_center.y - safe_render_y;
     const int s_max_y = start_center.y + safe_render_y;
     const int s_min_z = start_center.z - safe_render_z;
-    const int s_max_z = start_center.z + safe_render_z;
+    const int s_max_z = start_center.z + safe_render_z + z_correction;
 
     const int e_min_x = end_center.x - safe_render_x;
-    const int e_max_x = end_center.x + safe_render_x;
+    const int e_max_x = end_center.x + safe_render_x + x_correction;
     const int e_min_y = end_center.y - safe_render_y;
     const int e_max_y = end_center.y + safe_render_y;
     const int e_min_z = end_center.z - safe_render_z;
-    const int e_max_z = end_center.z + safe_render_z;
+    const int e_max_z = end_center.z + safe_render_z + z_correction;
 
     // Precompute overlapping regions for Y/Z faces
     const int overlap_x_min = MAX(s_min_x, e_min_x);

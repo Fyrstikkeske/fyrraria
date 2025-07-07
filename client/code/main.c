@@ -43,7 +43,7 @@ int main() {
 
     Player player;
     glm_vec3_copy((vec3){0.0f, 1.0f, 0.0f}, player.position);
-    const int render_distance = 30;
+    const int render_distance = 3;
     vec3int previus_chunk_center; 
     //do this for safe run
     previus_chunk_center = (vec3int){100, 100, 100};
