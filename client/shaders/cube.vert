@@ -21,20 +21,27 @@ void main()
     float w = aPos.z / gridZ; // minor circle angle
 
     // Angles
-    float theta = 2.0 * 3.1415926535 * u; // major angle
-    float phi   = 2.0 * 3.1415926535 * w; // minor angle
+    float theta = 2.0 * 3.1415926535 * u; // major angle (around donut)
+    float phi   = 2.0 * 3.1415926535 * w; // minor angle (around tube)
 
     // Radii
     float majorRadius = gridX / (2.0 * 3.1415926535); // donut center distance
     float minorRadius = gridZ / (2.0 * 3.1415926535); // donut tube radius
 
-    float effective_r = minorRadius + aPos.y;
+    // Exponential curvature on minor circle
+    float radialOffset = aPos.y;
+    float distance = minorRadius * phi; // arc-length along minor circle
 
-    // Parametrize torus
+    // Complex-style exponential mapping, analogous to your planet code
+    float expFactor = exp(radialOffset / minorRadius);
+    float circle_x = minorRadius * (expFactor * cos(distance / minorRadius)) - minorRadius;
+    float circle_y = minorRadius * (expFactor * sin(distance / minorRadius));
+
+    // Final torus position with curvature
     vec3 pos;
-    pos.x = (majorRadius + effective_r * cos(phi)) * cos(theta);
-    pos.y = (majorRadius + effective_r * cos(phi)) * sin(theta);
-    pos.z = effective_r * sin(phi);
+    pos.x = (majorRadius + circle_x) * cos(theta);
+    pos.y = (majorRadius + circle_x) * sin(theta);
+    pos.z = circle_y;
 
     gl_Position = projection * view * model * vec4(pos, 1.0);
     textureHandle = uvec2(handleLo, handleHi);

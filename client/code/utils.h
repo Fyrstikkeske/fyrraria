@@ -89,9 +89,9 @@ constexpr int CHUNK_VOLUME_P = CHUNK_SIZE_P * CHUNK_SIZE_P * CHUNK_SIZE_P;
 
 //TODO, move this to the planets struct so we can get more planets
 // X and Y must be odd due to some chunk detection glitch? otherwise the Other side of the torus final chunk doesnt render
-const int WORLD_X = 300;
-const int WORLD_Y = 1;
-const int WORLD_Z = 60;
+const int WORLD_X = 2;
+const int WORLD_Y = 500;
+const int WORLD_Z = 2;
 
 #define CLAMP(x, lower, upper) ((x) < (lower) ? (lower) : ((x) > (upper) ? (upper) : (x)))
 #define EUCLID_MODULO(x, modulo) ((x % modulo + modulo) % modulo)
@@ -151,25 +151,40 @@ typedef struct {
 
 
 
-static inline void transform_to_global_position(
-    vec3 localPosition, vec3 globalPosition, int Worldx, int Worldz, int chunksize)
+//chatgpt to the save like usual
+static inline void transform_to_global_position_exp(
+    const float localPosition[3], float globalPosition[3],
+    int Worldx, int Worldz, int chunksize)
 {
+    // Normalize parameters u, w in [0, 1]
     float u = localPosition[0] / (Worldx * chunksize);
     float w = localPosition[2] / (Worldz * chunksize);
 
-    float theta = 2.0f * M_PI * u;
-    float phi   = 2.0f * M_PI * w;
+    // Angles (radians)
+    float theta = 2.0f * M_PI * u; // major angle
+    float phi   = 2.0f * M_PI * w; // minor angle
 
+    // Radii
     float majorRadius = (Worldx * chunksize) / (2.0f * M_PI);
     float minorRadius = (Worldz * chunksize) / (2.0f * M_PI);
 
-    float effective_r = minorRadius + localPosition[1];
+    // radial offset inside the minor tube
+    float radialOffset = localPosition[1];
+    float distance = minorRadius * phi;
 
-    float x = (majorRadius + effective_r * cosf(phi)) * cosf(theta);
-    float y = (majorRadius + effective_r * cosf(phi)) * sinf(theta);
-    float z = effective_r * sinf(phi);
+    // Exponential curvature mapping (minor circle)
+    float expFactor = expf(radialOffset / minorRadius);
+    float circle_x = minorRadius * (expFactor * cosf(distance / minorRadius)) - minorRadius;
+    float circle_y = minorRadius * (expFactor * sinf(distance / minorRadius));
 
-    glm_vec3_copy((vec3){x, y, z}, globalPosition);
+    // Final global position on torus with exponential curvature
+    float x = (majorRadius + circle_x) * cosf(theta);
+    float y = (majorRadius + circle_x) * sinf(theta);
+    float z = circle_y;
+
+    globalPosition[0] = x;
+    globalPosition[1] = y;
+    globalPosition[2] = z;
 }
 static inline void analytical_torus_normal(vec3 input, vec3 dest, int Worldx, int Worldz, int chunksize){
     float u = input[0] / (Worldx * chunksize);
@@ -240,16 +255,16 @@ void get_torus_frame(
     // Tangent (dx)
     vec3 local_plus_dx = { position[0] + delta, position[1], position[2] };
     vec3 local_minus_dx = { position[0] - delta, position[1], position[2] };
-    transform_to_global_position(local_plus_dx, pos_plus_dx, Worldx, Worldz, chunksize);
-    transform_to_global_position(local_minus_dx, pos_minus_dx, Worldx, Worldz, chunksize);
+    transform_to_global_position_exp(local_plus_dx, pos_plus_dx, Worldx, Worldz, chunksize);
+    transform_to_global_position_exp(local_minus_dx, pos_minus_dx, Worldx, Worldz, chunksize);
     glm_vec3_sub(pos_plus_dx, pos_minus_dx, tangentOut);
     glm_vec3_normalize(tangentOut);
 
     // Bitangent (dz)
     vec3 local_plus_dz = { position[0], position[1], position[2] + delta };
     vec3 local_minus_dz = { position[0], position[1], position[2] - delta };
-    transform_to_global_position(local_plus_dz, pos_plus_dz, Worldx, Worldz, chunksize);
-    transform_to_global_position(local_minus_dz, pos_minus_dz, Worldx, Worldz, chunksize);
+    transform_to_global_position_exp(local_plus_dz, pos_plus_dz, Worldx, Worldz, chunksize);
+    transform_to_global_position_exp(local_minus_dz, pos_minus_dz, Worldx, Worldz, chunksize);
     glm_vec3_sub(pos_plus_dz, pos_minus_dz, bitangentOut);
     glm_vec3_normalize(bitangentOut);
 

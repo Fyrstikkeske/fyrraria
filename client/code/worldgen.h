@@ -443,7 +443,7 @@ void update_nearby_chunks(
                 current_center,
                 render_distance,
                 &entered, &entered_count,
-                &exited, &exited_count, false, world_x, world_z, world_y, 0);
+                &exited, &exited_count, false, world_x, world_z, world_y, -1);
             printf("%zu\n", entered_count);
             printf("%zu\n", exited_count);
             // Update previous center

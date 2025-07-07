@@ -50,6 +50,9 @@ static inline void generate_chunk(
               if (global_y <= height) {
                   chunk->blocks[block_idx].type = GRASS;
               }
+              if (global_x == 0 && global_z == 0){
+                chunk->blocks[block_idx].type = WOOD_LOG;
+              }
               if (global_y == 0){chunk->blocks[block_idx].type = WATER;}
           }
       }

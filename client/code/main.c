@@ -43,7 +43,7 @@ int main() {
 
     Player player;
     glm_vec3_copy((vec3){0.0f, 1.0f, 0.0f}, player.position);
-    const int render_distance = 10;
+    const int render_distance = 30;
     vec3int previus_chunk_center; 
     //do this for safe run
     previus_chunk_center = (vec3int){100, 100, 100};
@@ -114,7 +114,7 @@ int main() {
         analytical_torus_normal(player.position, player_normal, WORLD_X, WORLD_Z, CHUNK_SIZE);
         
         vec3 transformed_position;
-        transform_to_global_position(player.position, transformed_position, WORLD_X, WORLD_Z, CHUNK_SIZE);
+        transform_to_global_position_exp(player.position, transformed_position, WORLD_X, WORLD_Z, CHUNK_SIZE);
 
         vec3 tangent, bitangent;
         get_torus_frame(player.position, tangent, bitangent, WORLD_X, WORLD_Z, CHUNK_SIZE);
