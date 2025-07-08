@@ -41,9 +41,27 @@ int main() {
         abort();
     }
 
+    map(vec3int, Chunk) LodOne;
+    init(&LodOne);
+
+
+    if( !push( &lodLayers, LodOne ) ){
+        printf("out of memory foir LodOne\n");
+        abort();
+    }
+
+    map(vec3int, Chunk) LodTwo;
+    init(&LodTwo);
+
+
+    if( !push( &lodLayers, LodTwo ) ){
+        printf("out of memory foir LodTwo\n");
+        abort();
+    }
+
     Player player;
     glm_vec3_copy((vec3){0.0f, 1.0f, 0.0f}, player.position);
-    const int render_distance = 3;
+    const int render_distance = 4;
     vec3int previus_chunk_center; 
     //do this for safe run
     previus_chunk_center = (vec3int){100, 100, 100};
@@ -70,7 +88,7 @@ int main() {
 
     
     RGFW_window_swapInterval(win, 0);
-    int locations[5];
+    int locations[6];
     get_GL_uniform_locations(shaderProgram, locations);
 
     glUniform1f(locations[GRID_X], WORLD_X * CHUNK_SIZE);
@@ -126,7 +144,7 @@ int main() {
         handle_movement(win, camera_front_local, player.position);
         // Update and generate chunks using hashmap
         
-        update_nearby_chunks(get( &lodLayers, 0 ), WORLD_X, WORLD_Y, WORLD_Z, render_distance, player.position, &previus_chunk_center, textuer_handles);
+        update_nearby_chunks(&lodLayers, WORLD_X, WORLD_Y, WORLD_Z, render_distance, player.position, &previus_chunk_center, textuer_handles);
         // Update window title with FPS
         char buffer[256];
         snprintf(buffer, sizeof(buffer), "Fyrraria: %d | Frame: %.2fms | Pos:X:%.1f Y:%.1f Z:%.1f", fps, frameTime * 1000.0, player.position[0], player.position[1], player.position[2]);
@@ -151,13 +169,16 @@ int main() {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         PROFILE_BEGIN(Renderloop);
         // Render chunks from hashmap
+        int lod = 0;
         for_each(&lodLayers, layer){
+            glUniform1f(locations[LOD], (float)(1 << lod));
             for_each( layer, key, chunk ){
                 if (chunk->vertices == 0) continue;
                     glBindVertexArray(chunk->VAO);
                     glBindBuffer(GL_ARRAY_BUFFER, chunk->VBO);
                     glDrawArrays(GL_TRIANGLES, 0, chunk->vertices);
             };
+            lod++;
         };
         PROFILE_END(Renderloop);
         PROFILE_BEGIN(SwapBuffer);

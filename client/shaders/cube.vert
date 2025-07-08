@@ -12,13 +12,13 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-uniform float gridX, gridZ;
+uniform float gridX, gridZ, lod;
 
 void main()
 {
     // Normalize input to [0, 1]
-    float u = aPos.x / gridX; // major angle around torus
-    float w = aPos.z / gridZ; // minor circle angle
+    float u = (aPos.x * lod) / gridX; // major angle around torus
+    float w = (aPos.z * lod) / gridZ; // minor circle angle
 
     // Angles
     float theta = 2.0 * 3.1415926535 * u; // major angle (around donut)
@@ -29,6 +29,7 @@ void main()
     float minorRadius = gridZ / (2.0 * 3.1415926535); // donut tube radius
 
     // Exponential curvature on minor circle
+    //add lod here later
     float radialOffset = aPos.y;
     float distance = minorRadius * phi; // arc-length along minor circle
 

@@ -56,3 +56,5 @@ RGFW: Decent
 3/6-25: YAAAAA, OKOKOk, things i did last couple of days. Made the worldgen know which chunks to update and remove without iterating through the whole thing. Secondly, TANTANS BINARY FACE CULLING. thanks to theese things i dont even need to multithread world gen until like 10-15 render distance. (its still smart though thanks to perlin noise)
 
 19/6-25: yo im back biaches, finally made the checkrenderablechunksthingy allow for a not thingy within. basically, LODS ARE SOON READY(I hope.plsplsplspls) i dont want to fucking do lod anymore and just optimise the gpu now, it would be so nice. there are some schizo ideas(vertex pulling) basically 32 or maybe even 16 bits per face. addendum. CHUNKS DONT RENDER NEARBOR CHUNK PARTS IF NOT NEEDED!!! like 1.5x fps somehow
+
+9/7-25: oh yea, i was supposed to write here. troll. Regardless, summary of what happened. Fixed the opposite side chunk not rendering, changed to new hashmap which is betta. maybe basic Lod setup. just a thought
