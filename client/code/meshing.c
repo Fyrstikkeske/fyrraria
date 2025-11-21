@@ -1,38 +1,42 @@
-#pragma once
-
+#include "gl.h"
 #include "utils.h"
-#include "worldgen.h"
+
+#define FNL_IMPL
+#include "FastNoiseLite.h"
+
 #include <math.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
+#include <stdbit.h>
+
 constexpr int vertexSize = 3+2+1+1;
 
 constexpr int faceSize = vertexSize * 6;
 
-
 //should be in worldgen.h but screw that due to circular dependencies. fuck this shit
-static inline void generate_chunk(
-  Chunk* chunk, int chunk_x, int chunk_y, int chunk_z 
+void generate_chunk(
+  Chunk* chunk, int chunk_x, int chunk_y, int chunk_z, uint8_t lod
 ){
   
 
   memset(chunk->blocks, AIR, CHUNK_VOLUME * sizeof(enum Blocktype));
 
   // Generate terrain features
-  const int base_x = chunk_x * CHUNK_SIZE;
-  const int base_y = chunk_y * CHUNK_SIZE;
-  const int base_z = chunk_z * CHUNK_SIZE;
+  const int base_x = chunk_x * (CHUNK_SIZE );
+  const int base_y = chunk_y * (CHUNK_SIZE );
+  const int base_z = chunk_z * (CHUNK_SIZE );
 
   // Configure noise generator
   fnl_state noise = fnlCreateState();
   noise.seed = 1337;
   noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
-  noise.frequency = 0.01;
+  noise.frequency = 0.001;
 
   for (int x = 0; x < CHUNK_SIZE; ++x) {
       for (int z = 0; z < CHUNK_SIZE; ++z) {
-          int global_x = base_x + x;
-          int global_z = base_z + z;
+          int global_x = (base_x + x) << lod;
+          int global_z = (base_z + z) << lod;
 
           // Generate height using noise
           float height_noise = fnlGetNoise2D(&noise, (int)global_x, (int)global_z);
@@ -43,7 +47,7 @@ static inline void generate_chunk(
           int height = (int)(ridge * 20.0f) - 12; // Adjust height scale and offset
 
           for (int y = 0; y < CHUNK_SIZE; ++y) {
-              int global_y = base_y + y;
+              int global_y = (base_y + y); // cant add LOD here yet due to some fucking bug im to lazy to fix. But will have to do because the bug stops mauntains
 
               int block_idx = x + CHUNK_SIZE * (y + CHUNK_SIZE * z);
 
@@ -54,6 +58,19 @@ static inline void generate_chunk(
                 chunk->blocks[block_idx].type = WOOD_LOG;
               }
               if (global_y == 0){chunk->blocks[block_idx].type = WATER;}
+
+                if (global_x % 2 == 0 && global_z == 3 && global_y == 3){
+                chunk->blocks[block_idx].type = WOOD_LOG;
+              }
+                if (global_x % 2 == 0 && global_z == 3 && global_y == 4){
+                chunk->blocks[block_idx].type = WOOD_LOG;
+              }
+                if (global_x % 2 == 0 && global_z == 3 && global_y == 5){
+                chunk->blocks[block_idx].type = WOOD_LOG;
+              }
+                if (global_x % 2 == 0 && global_z == 3 && global_y == 17){
+                chunk->blocks[block_idx].type = WOOD_LOG;
+              }
           }
       }
   }
@@ -73,7 +90,7 @@ static inline void generate_chunk(
 //100% its fucking DONE
 //102% WE ARE SO BACK, beetwen chunks done(not counting the world border but fuck that for now) and performance is shit since world gen is run 6x more
 
-static inline void generate_face_vertices(float* buffer, int offset, int axis, 
+void generate_face_vertices(float* buffer, int offset, int axis, 
     int globalx, int globaly, int globalz,
     float floatLo, float floatHi, char lod) {
 float face[faceSize];
@@ -149,27 +166,28 @@ memcpy(&buffer[offset], face, sizeof(face));
 
 
 
-static inline void generate_mesh_for_chunk(
+void generate_mesh_for_chunk(
 Chunk *chunk,
 const uint64_t* handles,
+vec3int world_size,
 int chunk_x, 
 int chunk_y, 
-int chunk_z
+int chunk_z,
+uint8_t lod
 ) {
-
   //this stinks, legit rots
   Chunk chunkup;
-  generate_chunk(&chunkup, chunk_x, CLAMP(chunk_z + 1, 0, WORLD_Y), chunk_z);
+  generate_chunk(&chunkup, chunk_x, CLAMP(chunk_y + 1, 0, world_size.y), chunk_z, lod);
   Chunk chunkdown;
-  generate_chunk(&chunkdown, chunk_x, CLAMP(chunk_z - 1, 0, WORLD_Y), chunk_z);
+  generate_chunk(&chunkdown, chunk_x, CLAMP(chunk_y - 1, 0, world_size.y), chunk_z, lod);
   Chunk chunknorth;
-  generate_chunk(&chunknorth, chunk_x, chunk_y, EUCLID_MODULO(chunk_z + 1, WORLD_Z));
+  generate_chunk(&chunknorth, chunk_x, chunk_y, EUCLID_MODULO(chunk_z + 1, world_size.z), lod);
   Chunk chunksouth;
-  generate_chunk(&chunksouth, chunk_x, chunk_y, EUCLID_MODULO(chunk_z - 1, WORLD_Z));
+  generate_chunk(&chunksouth, chunk_x, chunk_y, EUCLID_MODULO(chunk_z - 1, world_size.z), lod);
   Chunk chunkwest;
-  generate_chunk(&chunkwest, EUCLID_MODULO(chunk_x - 1, WORLD_X), chunk_y, chunk_z);
+  generate_chunk(&chunkwest, EUCLID_MODULO(chunk_x - 1, world_size.x), chunk_y, chunk_z, lod);
   Chunk chunkeast;
-  generate_chunk(&chunkeast, EUCLID_MODULO(chunk_x + 1, WORLD_X), chunk_y, chunk_z);
+  generate_chunk(&chunkeast, EUCLID_MODULO(chunk_x + 1, world_size.x), chunk_y, chunk_z, lod);
   
 
   struct block padded_chunk_blocks[CHUNK_VOLUME_P] = {0};
@@ -295,7 +313,7 @@ for (int axis = 0; axis < 6; axis++) {
         uint64_t mask = occlusion_face_masks[axis * CHUNK_AREA_P + i];
         // Remove padding bits from the mask
         mask = (mask >> 1) & ~(1ULL << CHUNK_SIZE);
-        meshableFaces += __builtin_popcountll(mask);
+        meshableFaces += __builtin_popcountl(mask);
     }
 }
 
@@ -346,9 +364,9 @@ for (int axis = 0; axis < 6; axis++) {
             enum Blocktype blocktype = chunk->blocks[blockidx].type;
 
             // Get global coordinates
-            int globalx = chunk_x * CHUNK_SIZE + voxelpos.x * pow(2, chunk->lod);
-            int globaly = chunk_y * CHUNK_SIZE + voxelpos.y * pow(2, chunk->lod);
-            int globalz = chunk_z * CHUNK_SIZE + voxelpos.z * pow(2, chunk->lod);
+            int globalx = chunk_x * CHUNK_SIZE + voxelpos.x * pow(2, 0);
+            int globaly = chunk_y * CHUNK_SIZE + voxelpos.y * pow(2, 0);
+            int globalz = chunk_z * CHUNK_SIZE + voxelpos.z * pow(2, 0);
 
             // Handle texture
             uint64_t texHandle = handles[blocktype];
@@ -361,7 +379,7 @@ for (int axis = 0; axis < 6; axis++) {
             // Generate face vertices
             generate_face_vertices(worldmeshes, offset, axis, 
                 globalx, globaly, globalz, 
-                floatLo, floatHi, chunk->lod);
+                floatLo, floatHi, 0);
             offset += faceSize;
         }
     }

@@ -1,23 +1,14 @@
-#pragma once
-
 
 #include <gl.h>
 #include <stdio.h>
-
-enum uniformlocations : char{
-    MODEL,
-    VIEW,
-    PROJECTION,
-    GRID_X,
-    GRID_Z,
-    LOD,
-};
+#include "shader.h"
 
 void get_GL_uniform_locations(int shaderProgram, int locations[]){
     int modelLocaction = glGetUniformLocation(shaderProgram, "model");
     int viewLocation = glGetUniformLocation(shaderProgram, "view");
     int projectionLocation = glGetUniformLocation(shaderProgram, "projection");
     int gridXLocation = glGetUniformLocation(shaderProgram, "gridX");
+    int gridYLocation = glGetUniformLocation(shaderProgram, "gridY");
     int gridZLocation = glGetUniformLocation(shaderProgram, "gridZ");
     int lodLocation = glGetUniformLocation(shaderProgram, "lod");
 
@@ -33,6 +24,9 @@ void get_GL_uniform_locations(int shaderProgram, int locations[]){
     if (gridXLocation == -1) {
         printf("cant find gridXLocation in shader location \n");
     }
+    if (gridYLocation == -1) {
+        printf("cant find gridYLocation in shader location \n");
+    }
     if (gridZLocation == -1) {
         printf("cant find gridZLocation in shader location \n");
     }
@@ -44,6 +38,7 @@ void get_GL_uniform_locations(int shaderProgram, int locations[]){
     locations[VIEW] = viewLocation;
     locations[PROJECTION] = projectionLocation;
     locations[GRID_X] = gridXLocation;
+    locations[GRID_Y] = gridYLocation;
     locations[GRID_Z] = gridZLocation;
     locations[LOD] = lodLocation;
 }

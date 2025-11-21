@@ -12,7 +12,7 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-uniform float gridX, gridZ, lod;
+uniform float gridX, gridY, gridZ, lod;
 
 void main()
 {
@@ -29,8 +29,8 @@ void main()
     float minorRadius = gridZ / (2.0 * 3.1415926535); // donut tube radius
 
     // Exponential curvature on minor circle
-    //add lod here later
-    float radialOffset = aPos.y;
+    //add lod here later, todo add LOD after fixing the mountains disappearing at large LODS
+    float radialOffset = (aPos.y) ;
     float distance = minorRadius * phi; // arc-length along minor circle
 
     // Complex-style exponential mapping, analogous to your planet code

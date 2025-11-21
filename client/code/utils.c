@@ -5,48 +5,13 @@
 #include <cglm/cglm.h>
 #include <gl.h>
 #include <RGFW.h>
-#include <uchar.h>
-#include "cc.h"
+#include "utils.h"
 
 #define GLAD_GL_IMPLEMENTATION
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-
-
-
-
-
-#define PROFILE_ENABLED 0  // Set to 0 to disable profiling
-
-#if PROFILE_ENABLED
-    #define PROFILE_BEGIN(name) \
-        struct timespec profile_start_##name, profile_end_##name; \
-        clock_gettime(CLOCK_MONOTONIC, &profile_start_##name)
-
-    #define PROFILE_END(name) \
-        do { \
-            clock_gettime(CLOCK_MONOTONIC, &profile_end_##name); \
-            double duration = (profile_end_##name.tv_sec - profile_start_##name.tv_sec) * 1000.0 + \
-                            (profile_end_##name.tv_nsec - profile_start_##name.tv_nsec) / 1000000.0; \
-            printf("[PROFILE] %-30s %7.3f ms\n", #name, duration); \
-        } while(0)
-
-    // Simplified PROFILE_SCOPE without comma expression warning
-    #define PROFILE_SCOPE(name) \
-        PROFILE_BEGIN(name); \
-        for(int _done = 0; !_done; _done = 1)
-
-    #define PROFILE_SCOPE_END(name) PROFILE_END(name)
-#else
-    #define PROFILE_BEGIN(name)
-    #define PROFILE_END(name)
-    #define PROFILE_SCOPE(name) for(int _i = 0; _i < 1; _i++)
-    #define PROFILE_SCOPE_END(name)
-#endif
-
-
 
 
 constexpr char vertexShaderSource[] = {
@@ -57,15 +22,6 @@ constexpr char vertexShaderSource[] = {
 constexpr char fragmentShaderSource[] = {
     #embed "../shaders/cube.frag" 
     , 0
-};
-
-enum Blocktype : unsigned char{
-    AIR,
-    TEST,
-    GRASS,
-    LEAF,
-    WOOD_LOG,
-    WATER,
 };
 
 const bool DoesBlockOcclude[] = {
@@ -79,80 +35,16 @@ const bool DoesBlockOcclude[] = {
 
 
 
-constexpr int CHUNK_SIZE = 16;
-constexpr int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
-constexpr int CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
-
-constexpr int CHUNK_SIZE_P = CHUNK_SIZE + 2;
-constexpr int CHUNK_AREA_P = CHUNK_SIZE_P * CHUNK_SIZE_P;
-constexpr int CHUNK_VOLUME_P = CHUNK_SIZE_P * CHUNK_SIZE_P * CHUNK_SIZE_P;
 
 //TODO, move this to the planets struct so we can get more planets
 // X and Y must be odd due to some chunk detection glitch? otherwise the Other side of the torus final chunk doesnt render
-const int WORLD_X = 1000;
-const int WORLD_Y = 1;
-const int WORLD_Z = 100;
-
-#define CLAMP(x, lower, upper) ((x) < (lower) ? (lower) : ((x) > (upper) ? (upper) : (x)))
-#define EUCLID_MODULO(x, modulo) ((x % modulo + modulo) % modulo)
-
-struct shaderstruct{
-    int shaderProgram;
-    unsigned int VAO;
-};
-
-typedef struct {
-    vec3 position;
-} Player;
-
-typedef struct {
-    GLuint vbo;
-    GLsizei vertexCount;
-} RenderChunk;
 
 
-struct block{
-    enum Blocktype type;
-};
-
-typedef struct{
-    int32_t x;
-    int32_t y;
-    int32_t z;
-} vec3int;
-
-#define CC_CMPR vec3int, {                            \
-    if (val_1.x != val_2.x)                           \
-        return val_1.x < val_2.x ? -1 : 1;            \
-    if (val_1.y != val_2.y)                           \
-        return val_1.y < val_2.y ? -1 : 1;            \
-    if (val_1.z != val_2.z)                           \
-        return val_1.z < val_2.z ? -1 : 1;            \
-    return 0;                                         \
-}
-
-#define CC_HASH vec3int, {                             \
-    return (uint64_t)val.x * 2654435761ull +           \
-           (uint64_t)val.y * 2246822519ull +           \
-           (uint64_t)val.z * 3266489917ull;            \
-}
-
-#include "cc.h"
-
-typedef struct {
-    struct block blocks[CHUNK_VOLUME];
-    bool isdirty;
-    GLuint VBO;
-    GLuint VAO;
-    int vertices;
-    bool is_active;
-    char8_t lod;
-} Chunk;
 
 
 
 //chatgpt to the save like usual
-static inline void transform_to_global_position_exp(
+void transform_to_global_position_exp(
     const float localPosition[3], float globalPosition[3],
     int Worldx, int Worldz, int chunksize)
 {
@@ -186,7 +78,7 @@ static inline void transform_to_global_position_exp(
     globalPosition[1] = y;
     globalPosition[2] = z;
 }
-static inline void analytical_torus_normal(vec3 input, vec3 dest, int Worldx, int Worldz, int chunksize){
+void analytical_torus_normal(vec3 input, vec3 dest, int Worldx, int Worldz, int chunksize){
     float u = input[0] / (Worldx * chunksize);
     float w = input[2] / (Worldz * chunksize);
     float theta = 2.0 * M_PI * u;
@@ -206,11 +98,13 @@ static inline void analytical_torus_normal(vec3 input, vec3 dest, int Worldx, in
 
     glm_vec3_copy(normal, dest);
 }
-static inline void handle_movement(RGFW_window* win, vec3 cameraFrontLocal, vec3 playerpos){
+
+
+void handle_movement(RGFW_window* win, vec3 cameraFrontLocal, vec3 playerpos){
     float horizontalSpeed;
     //why us this a warning in the ide, it compiles. fuck this
     if (RGFW_isPressed(win, RGFW_controlL)) {
-        horizontalSpeed = 32.0;
+        horizontalSpeed = 64.0;
     }else {
         horizontalSpeed = 0.1;
     }
@@ -344,7 +238,7 @@ int make_shader_program (){
     return shaderProgram;
 }
 
-static inline void rotate_camera(float_t pitch, float_t yaw, float_t* tangent, float_t* bitangent,vec3 cameraFront,  vec3 playersNormalisedNormalForCameraUse, vec3 cameraFrontLocal){ 
+void rotate_camera(float_t pitch, float_t yaw, float_t* tangent, float_t* bitangent,vec3 cameraFront,  vec3 playersNormalisedNormalForCameraUse, vec3 cameraFrontLocal){ 
 
     
     float yawRad   = glm_rad(yaw);

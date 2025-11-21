@@ -1,16 +1,22 @@
-#include "shader.h"
-
-#include "utils.h"
-#define FNL_IMPL
-#define STB_IMAGE_IMPLEMENTATION
-#define RGFW_IMPLEMENTATION
 #define GLAD_GL_IMPLEMENTATION
 
-#include <gl.h>
+
+#include "shader.h"
+#include "cc.h"
+#include "gl.h"
+#include "utils.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+
+#define RGFW_IMPLEMENTATION
 #include <RGFW.h>
+
+
 #include <cglm/cglm.h>
 #include <stb_image.h>
 #include "worldgen.h"
+#include "cc.h"
+
 
 void keyfunc(RGFW_window* win, unsigned char key, unsigned char keyChar, unsigned char keyMod, unsigned char pressed) {
     if (key == RGFW_escape && pressed) {
@@ -18,7 +24,23 @@ void keyfunc(RGFW_window* win, unsigned char key, unsigned char keyChar, unsigne
     }
 }
 
+
+void glm_perspective_infinite_z(float fovy, float aspect, float nearZ, mat4 dest) {
+    float f = 1.0f / tanf(fovy / 2.0f);
+
+    glm_mat4_zero(dest);
+    dest[0][0] = f / aspect;
+    dest[1][1] = f;
+    dest[2][2] = 0.0f;
+    dest[2][3] = -1.0f;
+    dest[3][2] = nearZ;
+}
+
+
 int main() {
+    const vec3u8 world_size = {13 ,10 ,10};
+
+
     char windowTitle[256] = "Fyrraria";
     RGFW_window* win = RGFW_createWindow(windowTitle, RGFW_RECT(0, 0, 800, 600), RGFW_windowCenter);
     gladLoadGL((GLADloadfunc) RGFW_getProcAddress);
@@ -41,34 +63,34 @@ int main() {
         abort();
     }
 
-    map(vec3int, Chunk) LodOne;
-    init(&LodOne);
+    // how_many_lods should be the smallest value of world_size.xyz
+    #define MIN(a, b) ((a) < (b) ? (a) : (b))
+    const uint8_t how_many_lods = MIN(world_size.x, MIN(world_size.y, world_size.z));
 
+    for (uint8_t lod_adding = 0; lod_adding < how_many_lods; lod_adding++) {
+        map(vec3int, Chunk) LodOne;
+        init(&LodOne);
 
-    if( !push( &lodLayers, LodOne ) ){
-        printf("out of memory foir LodOne\n");
-        abort();
+        if( !push( &lodLayers, LodOne ) ){
+            printf("out of memory for lod %hhu\n", lod_adding);
+            abort();
+        }
     }
 
-    map(vec3int, Chunk) LodTwo;
-    init(&LodTwo);
 
-
-    if( !push( &lodLayers, LodTwo ) ){
-        printf("out of memory foir LodTwo\n");
-        abort();
-    }
 
     Player player;
     glm_vec3_copy((vec3){0.0f, 1.0f, 0.0f}, player.position);
-    const int render_distance = 4;
-    vec3int previus_chunk_center; 
+    const int render_distance = 2;
+    vec3int previus_chunk_center;
     //do this for safe run
     previus_chunk_center = (vec3int){100, 100, 100};
 
     int shaderProgram = make_shader_program();
     glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_GREATER);
     glEnable(GL_CULL_FACE);
+    glClearDepth(0.0);
 
     uint64_t textuer_handles[] = {
         [GRASS] = load_texture_into_shader_bindless(shaderProgram, "client/textures/grass.png"),
@@ -91,8 +113,9 @@ int main() {
     int locations[6];
     get_GL_uniform_locations(shaderProgram, locations);
 
-    glUniform1f(locations[GRID_X], WORLD_X * CHUNK_SIZE);
-    glUniform1f(locations[GRID_Z], WORLD_Z * CHUNK_SIZE);
+    glUniform1f(locations[GRID_X], (1 << world_size.x) * CHUNK_SIZE);
+    glUniform1f(locations[GRID_Y], (1 << world_size.y) * CHUNK_SIZE);
+    glUniform1f(locations[GRID_Z], (1 << world_size.z) * CHUNK_SIZE);
 
     u32 fps = 0;
     u32 frames = 0;
@@ -129,13 +152,13 @@ int main() {
         pitch = pitch < -89.0f ? -89.0f : pitch;
         
         vec3 player_normal;
-        analytical_torus_normal(player.position, player_normal, WORLD_X, WORLD_Z, CHUNK_SIZE);
+        analytical_torus_normal(player.position, player_normal, 1 << world_size.x, 1 << world_size.z, CHUNK_SIZE);
         
         vec3 transformed_position;
-        transform_to_global_position_exp(player.position, transformed_position, WORLD_X, WORLD_Z, CHUNK_SIZE);
+        transform_to_global_position_exp(player.position, transformed_position, 1 << world_size.x, 1 << world_size.z, CHUNK_SIZE);
 
         vec3 tangent, bitangent;
-        get_torus_frame(player.position, tangent, bitangent, WORLD_X, WORLD_Z, CHUNK_SIZE);
+        get_torus_frame(player.position, tangent, bitangent, 1 << world_size.x, 1 << world_size.z, CHUNK_SIZE);
 
         vec3 camera_front_local;
         vec3 camera_front = {0.0f, 0.0f, -1.0f};
@@ -144,7 +167,7 @@ int main() {
         handle_movement(win, camera_front_local, player.position);
         // Update and generate chunks using hashmap
         
-        update_nearby_chunks(&lodLayers, WORLD_X, WORLD_Y, WORLD_Z, render_distance, player.position, &previus_chunk_center, textuer_handles);
+        update_nearby_chunks(&lodLayers, world_size, render_distance, player.position, &previus_chunk_center, textuer_handles);
         // Update window title with FPS
         char buffer[256];
         snprintf(buffer, sizeof(buffer), "Fyrraria: %d | Frame: %.2fms | Pos:X:%.1f Y:%.1f Z:%.1f", fps, frameTime * 1000.0, player.position[0], player.position[1], player.position[2]);
@@ -159,7 +182,7 @@ int main() {
 
         // Set up projection matrix
         mat4 projection_matrix;
-        glm_perspective(glm_rad(70.0f), (float)win->r.w/win->r.h, 0.1f, 100000.0f, projection_matrix);
+        glm_perspective_infinite_z(glm_rad(70.0f), (float)win->r.w / win->r.h, 0.1f, projection_matrix);
         glUniformMatrix4fv(locations[PROJECTION], 1, GL_FALSE, (const float *)projection_matrix);
 
         // Set model matrix
